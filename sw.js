@@ -7,8 +7,8 @@ const CORE_ASSETS = [
   "app.js",
   "sw.js",
   "manifest.webmanifest",
-  "assets/icon-192.png",
-  "assets/icon-512.png",
+  "assets/icons/icon-192.png",
+  "assets/icons/icon-512.png",
   "data/efemerides_2026.json",
   "data/cataleg_icones.json",
   "data/eclipses.json"
