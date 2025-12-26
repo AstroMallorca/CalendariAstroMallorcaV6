@@ -440,10 +440,12 @@ async function inicia() {
    festius = new Map();
 
 fest.forEach(r => {
-  const iso = ddmmyyyyToISO(r.data);
+  const iso = ddmmyyyyToISO(r.data);  // columna A
   if (!iso) return;
-  festius.set(iso, r.nom || "Festiu");
+  festius.set(iso, (r.nom || "Festiu")); // columna B
 });
+
+console.log("✅ Festius carregats:", festius.size, [...festius.entries()].slice(0, 5));
 
     // calendari
     try {
