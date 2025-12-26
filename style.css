@@ -1,219 +1,225 @@
-/* style.css */
-body{
-  font-family: system-ui, sans-serif;
-  background:#fff;
-  color:#000;
-  margin:0;
+:root{
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #6b6b6b;
+  --gridline: #e9e9e9;
+  --festiu: #1f9b4a;
+  --card: #ffffff;
 }
 
-/* TOP BAR */
+/* Mode nocturn (simple: negre + vermell) */
+body.nocturn{
+  --bg: #000000;
+  --fg: #ff3b30;
+  --muted: #ff6b63;
+  --gridline: #2a2a2a;
+  --card: #000000;
+}
+
+*{ box-sizing: border-box; }
+body{
+  margin:0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+/* Topbar */
 .topbar{
-  display:grid;
-  grid-template-columns: 52px 1fr 52px;
+  display:flex;
   align-items:center;
-  padding: 10px 12px;
-  gap: 8px;
+  justify-content:space-between;
+  padding: 14px 14px 10px 14px;
+  background: var(--bg);
 }
 .logo-am{
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
 }
-.topbar-title{
-  margin:0;
-  text-align:center;
-  font-size: 34px;
+.top-title{
+  margin: 0;
+  font-size: 44px;
   font-weight: 800;
+  line-height: 1;
+  text-align:center;
+  flex: 1;
 }
 .btn-icon{
-  background: transparent;
-  border: 0;
-  padding: 6px;
-  border-radius: 10px;
-}
-.icon-btn{
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-/* FOTO DEL MES */
-#fotoMes{
-  padding: 0 0 10px 0;
-}
-#fotoMes img{
-  width: 100%;
-  height: auto;
-  display:block;
-  border-radius: 0;
-}
-#titolFoto{
-  margin: 10px 12px 0 12px;
-  font-size: 18px;
-}
-
-/* TÍTOL DEL MES */
-.mes-bar{
-  padding: 10px 0 6px 0;
-}
-.titol-mes{
-  text-align: center;
-  font-weight: 800;
-  letter-spacing: 1px;
-  font-size: 18px;
-}
-/* Text sota la foto: títol — autor */
-#titolFoto{
-  margin: 10px 12px 0 12px;
-  font-size: 18px;
-}
-
-/* Icona petita d'AstroMallorca a la graella */
-.am-mini{
-  width: 14px;
-  height: 14px;
-  object-fit: contain;
-  display: inline-block;
-}
-
-
-/* DIES DE LA SETMANA */
-.dies-setmana{
-  display:grid;
-  grid-template-columns: repeat(7, 1fr);
-  padding: 0 0 6px 0;
-}
-.dies-setmana div{
-  text-align:center;
-  font-weight:700;
-  font-size:12px;
-  opacity:0.65;
-  padding: 6px 0;
-}
-.am-mini{
-  width: 14px;
-  height: 14px;
-  object-fit: contain;
-  display: inline-block;
-}
-
-/* GRAELLA (SENSE SEPARACIÓ) */
-.graella{
-  display:grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 0;
-  padding: 0 0 16px 0;
-}
-
-/* CASELLES (MIDA FIXA) */
-.dia{
-  height: 56px;
-  background: #f1f1f1;
-  padding: 6px;
-  border-radius: 0;
-  border: 1px solid rgba(0,0,0,0.05);
-  box-sizing: border-box;
-
-  display: grid;
-  grid-template-rows: auto 1fr;
-  overflow: hidden;
-}
-.dia.buit{
-  height: 56px;
-  background: transparent !important;
-  border: 1px solid rgba(0,0,0,0.03);
-}
-.dia .num{
-  font-weight: 800;
-  font-size: 16px;
-  line-height: 1;
-}
-
-/* Diumenges i festius: número verd */
-.dia.festiu .num{
-  color: #0a8f3c;
-}
-
-/* BADGES */
-.badges{
+  width: 44px;
+  height: 44px;
   display:flex;
-  gap: 4px;
-  justify-content: flex-end;
-  align-items: center;
-  max-height: 16px;
-  overflow: hidden;
-}
-.badge{
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.08);
-}
-.badge.am{
-  background: rgba(255, 200, 0, 0.35);
-}
-
-/* MODAL */
-.modal{
-  position: fixed;
-  inset: 0;
-  background: #fff;
-  padding: 15px;
-  overflow: auto;
-}
-.ocult{ display:none; }
-
-.tancar{
+  align-items:center;
+  justify-content:center;
+  border: none;
   background: transparent;
-  border: 0;
-  font-size: 22px;
-  padding: 6px 10px;
+  padding:0;
+}
+.btn-icon img{
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
-/* MODE NOCTURN */
-body.nocturn{
-  background:#000;
-  color:#ff4444;
-}
-body.nocturn .modal{
-  background:#000;
-}
-body.nocturn .dia{
-  background:#120000;
-  border-color: rgba(255,68,68,0.10);
-  color:#ff4444;
-}
-/* Mantén els festius verds també en nocturn (si vols canviar-ho a vermell, m'ho dius) */
-body.nocturn .dia.festiu .num{
-  color: #0a8f3c;
-}
-body.nocturn .badge{
-  background: rgba(255,68,68,0.18);
-}
-body.nocturn .dies-setmana div{
-  opacity: 0.85;
-}
-
-/* SWIPE */
+/* Swipe area */
 .swipe-area{
-  overflow: hidden;
-  touch-action: pan-y;
+  padding-bottom: 18px;
 }
 .swipe-inner{
   will-change: transform, opacity;
 }
+
+/* Foto mes */
+.foto-mes{
+  width: 100%;
+  height: auto;
+  display:block;
+}
+
+/* ✅ Caption entre foto i mes */
+.caption-foto{
+  margin: 10px 14px 6px 14px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--fg);
+}
+
+/* Títol del mes */
+.titol-mes{
+  margin: 14px 14px 10px 14px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-align: center;
+  color: var(--fg);
+}
+
+/* Capçalera setmana */
+.cap-setmana{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 0 10px;
+  padding: 10px 4px 8px 4px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.cap-setmana > div{
+  text-align:center;
+}
+
+/* Graella: quadrats, sense separació (com mockup) */
+.graella{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 0 10px 20px 10px;
+  border-left: 1px solid var(--gridline);
+  border-top: 1px solid var(--gridline);
+}
+
+/* Cada cel·la sempre mateixa mida */
+.dia{
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-right: 1px solid var(--gridline);
+  border-bottom: 1px solid var(--gridline);
+  background: #f6f6f6;
+  color: #111;
+  overflow: hidden;
+}
+
+body.nocturn .dia{
+  background: #050505;
+  color: var(--fg);
+}
+
+.dia.buit{
+  background: transparent;
+}
+
+.dia .num{
+  position:absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+/* verd per diumenge i festius */
+.dia.festiu .num{
+  color: var(--festiu);
+}
+
+/* Badges (efemèrides i logo AM) */
+.badges{
+  position:absolute;
+  left: 8px;
+  bottom: 8px;
+  display:flex;
+  gap: 6px;
+  align-items:center;
+}
+
+.badge{
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #dcdcdc;
+  color: #111;
+}
+body.nocturn .badge{
+  background:#151515;
+  color: var(--fg);
+}
+
+.am-mini{
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display:inline-block;
+}
+
+/* Animació swipe */
 .swipe-anim{
   transition: transform 220ms ease, opacity 220ms ease;
 }
-.swipe-out-left{ transform: translateX(-14%); opacity: 0; }
-.swipe-out-right{ transform: translateX(14%); opacity: 0; }
-.swipe-in-left{ transform: translateX(14%); opacity: 0; }
-.swipe-in-right{ transform: translateX(-14%); opacity: 0; }
+.swipe-out-left{ transform: translateX(-18px); opacity: 0.0; }
+.swipe-out-right{ transform: translateX(18px); opacity: 0.0; }
+.swipe-in-left{ transform: translateX(18px); opacity: 0.0; }
+.swipe-in-right{ transform: translateX(-18px); opacity: 0.0; }
 .swipe-reset{ transform: translateX(0); opacity: 1; }
 
-#titolFoto{
-  margin: 10px 12px 0 12px;
-  font-size: 18px;
-  line-height: 1.2;
-  font-weight: 500;
+/* Modal */
+.modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 18px;
+  z-index: 50;
 }
+.modal.ocult{ display:none; }
+
+.modal-card{
+  width: min(720px, 100%);
+  max-height: 80vh;
+  overflow:auto;
+  background: var(--card);
+  color: var(--fg);
+  border-radius: 16px;
+  padding: 16px;
+  position: relative;
+}
+.tancar{
+  position:absolute;
+  top: 10px;
+  right: 10px;
+  border:none;
+  background: transparent;
+  font-size: 22px;
+  color: var(--fg);
+}
+.modal-content h2{ margin: 0 0 10px 0; }
+.modal-content a{ color: inherit; }
