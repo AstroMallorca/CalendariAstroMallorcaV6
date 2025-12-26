@@ -1,3 +1,4 @@
+/* style.css */
 body{
   font-family: system-ui, sans-serif;
   background:#fff;
@@ -86,7 +87,7 @@ body{
 
 /* CASELLES (MIDA FIXA) */
 .dia{
-  height: 56px;                 /* ← totes iguals */
+  height: 56px;
   background: #f1f1f1;
   padding: 6px;
   border-radius: 0;
@@ -94,23 +95,21 @@ body{
   box-sizing: border-box;
 
   display: grid;
-  grid-template-rows: auto 1fr; /* num a dalt, badges a baix */
-  overflow: hidden;             /* ← mai creix */
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
 }
-
 .dia.buit{
   height: 56px;
   background: transparent !important;
   border: 1px solid rgba(0,0,0,0.03);
 }
-
 .dia .num{
   font-weight: 800;
   font-size: 16px;
   line-height: 1;
 }
 
-/* BADGES (NO DEFORMEN) */
+/* BADGES */
 .badges{
   display:flex;
   gap: 4px;
@@ -135,13 +134,24 @@ body{
   inset: 0;
   background: #fff;
   padding: 15px;
+  overflow: auto;
 }
 .ocult{ display:none; }
+
+.tancar{
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+  padding: 6px 10px;
+}
 
 /* MODE NOCTURN */
 body.nocturn{
   background:#000;
   color:#ff4444;
+}
+body.nocturn .modal{
+  background:#000;
 }
 body.nocturn .dia{
   background:#120000;
@@ -154,26 +164,21 @@ body.nocturn .badge{
 body.nocturn .dies-setmana div{
   opacity: 0.85;
 }
+
 /* SWIPE */
 .swipe-area{
   overflow: hidden;
-  touch-action: pan-y; /* permet scroll vertical però detecta swipe horitzontal */
+  touch-action: pan-y;
 }
-
 .swipe-inner{
   will-change: transform, opacity;
 }
-
 .swipe-anim{
   transition: transform 220ms ease, opacity 220ms ease;
 }
-
 .swipe-out-left{ transform: translateX(-14%); opacity: 0; }
 .swipe-out-right{ transform: translateX(14%); opacity: 0; }
-
 .swipe-in-left{ transform: translateX(14%); opacity: 0; }
 .swipe-in-right{ transform: translateX(-14%); opacity: 0; }
-
 .swipe-reset{ transform: translateX(0); opacity: 1; }
-
 
