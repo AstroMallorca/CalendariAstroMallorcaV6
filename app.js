@@ -1,37 +1,80 @@
+// app.js
+
 // === URLs (les teves) ===
 const SHEET_FOTOS_MES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWf6OL8LYzMsBPuxvI_h4s9-0__hru3hWK9D2ewyccoku9ndl2VhZ0GS8P9uEigShJEehsy2UktnY2/pub?gid=0&single=true&output=csv";
 const SHEET_EFEMERIDES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWf6OL8LYzMsBPuxvI_h4s9-0__hru3hWK9D2ewyccoku9ndl2VhZ0GS8P9uEigShJEehsy2UktnY2/pub?gid=1305356303&single=true&output=csv";
 const SHEET_CONFIG = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWf6OL8LYzMsBPuxvI_h4s9-0__hru3hWK9D2ewyccoku9ndl2VhZ0GS8P9uEigShJEehsy2UktnY2/pub?gid=1324899531&single=true&output=csv";
 
-// ICS públic (prova això)
+// ICS públic
 const CALENDAR_ICS = "https://calendar.google.com/calendar/ical/astromca%40gmail.com/public/basic.ics";
 
-let efemerides = {};        // efemerides locals (data/efemerides_2026.json) per dia ISO
-let efemeridesEspecials = {}; // del sheet per dia ISO -> array
-let activitats = {};        // del calendari ICS per dia ISO -> array
-let fotosMes = {};          // MM-YYYY -> info foto
+// Mesos en català
+const MESOS_CA = [
+  "Gener","Febrer","Març","Abril","Maig","Juny",
+  "Juliol","Agost","Setembre","Octubre","Novembre","Desembre"
+];
+
+// === CONTROL DE MES (SWIPE) ===
+let mesActual = "2026-08"; // mes inicial
+
+function monthToParts(isoYM){
+  const [y, m] = isoYM.split("-").map(Number);
+  return { y, m };
+}
+function partsToMonth(y, m){
+  return `${y}-${String(m).padStart(2,"0")}`;
+}
+function nextMonth(isoYM){
+  let { y, m } = monthToParts(isoYM);
+  m += 1;
+  if (m === 13){ m = 1; y += 1; }
+  return partsToMonth(y, m);
+}
+function prevMonth(isoYM){
+  let { y, m } = monthToParts(isoYM);
+  m -= 1;
+  if (m === 0){ m = 12; y -= 1; }
+  return partsToMonth(y, m);
+}
+function clamp2026(isoYM){
+  const { y } = monthToParts(isoYM);
+  if (y < 2026) return "2026-01";
+  if (y > 2026) return "2026-12";
+  return isoYM;
+}
+function renderMes(isoYM){
+  mesActual = isoYM;
+  setFotoMes(mesActual);
+  actualitzaTitolMes(mesActual);
+  dibuixaMes(mesActual);
+}
+
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// === ESTAT DADES ===
+let efemerides = {};           // local data/efemerides_2026.json (per dia ISO)
+let efemeridesEspecials = {};  // del sheet per dia ISO -> array
+let activitats = {};           // del calendari ICS per dia ISO -> array
+let fotosMes = {};             // "MM-YYYY" -> info foto
 
 // === Utils dates ===
 function ddmmyyyyToISO(s) {
-  // "12-08-2026" -> "2026-08-12"
   const [dd, mm, yyyy] = (s || "").trim().split("-");
   if (!dd || !mm || !yyyy) return null;
   return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
 }
-function isoToDay(iso) {
-  return iso.split("-")[2];
+function isoToMonthKey(isoYM) {
+  // isoYM "2026-08" -> "08-2026"
+  return `${isoYM.slice(5,7)}-${isoYM.slice(0,4)}`;
 }
-function isoToMonthKey(iso) {
-  // "2026-08-12" -> "08-2026"
-  const [y, m] = iso.split("-");
-  return `${m}-${y}`;
-}
-function isoToYM(iso) {
-  // "2026-08-12" -> "2026-08"
-  return iso.slice(0, 7);
+function actualitzaTitolMes(isoYM){
+  const [y, m] = isoYM.split("-").map(Number);
+  const nom = `${MESOS_CA[m-1]} ${y}`;
+  const el = document.getElementById("titolMes");
+  if (el) el.textContent = nom.toUpperCase();
 }
 
-// === CSV parser robust (quotes, commas) ===
+// === CSV parser (quotes + commas) ===
 function parseCSV(text) {
   const rows = [];
   let row = [];
@@ -43,39 +86,23 @@ function parseCSV(text) {
     const next = text[i + 1];
 
     if (c === '"' && inQuotes && next === '"') {
-      cur += '"';
-      i++;
-      continue;
+      cur += '"'; i++; continue;
     }
-    if (c === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-    if (c === "," && !inQuotes) {
-      row.push(cur);
-      cur = "";
-      continue;
-    }
+    if (c === '"') { inQuotes = !inQuotes; continue; }
+
+    if (c === "," && !inQuotes) { row.push(cur); cur = ""; continue; }
+
     if ((c === "\n" || c === "\r") && !inQuotes) {
-      if (cur.length || row.length) {
-        row.push(cur);
-        rows.push(row);
-      }
-      row = [];
-      cur = "";
-      // saltar \r\n
+      if (cur.length || row.length) { row.push(cur); rows.push(row); }
+      row = []; cur = "";
       if (c === "\r" && next === "\n") i++;
       continue;
     }
     cur += c;
   }
-  if (cur.length || row.length) {
-    row.push(cur);
-    rows.push(row);
-  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
   return rows;
 }
-
 function rowsToObjects(rows) {
   if (!rows.length) return [];
   const header = rows[0].map(h => (h || "").trim());
@@ -90,7 +117,6 @@ function rowsToObjects(rows) {
 
 // === ICS parser mínim (VEVENT) ===
 function parseICS(icsText) {
-  // Unfold lines (RFC5545): lines that start with space are continuations
   const rawLines = icsText.split(/\r?\n/);
   const lines = [];
   for (const l of rawLines) {
@@ -111,12 +137,10 @@ function parseICS(icsText) {
 
     const left = line.slice(0, idx);
     const value = line.slice(idx + 1);
-
-    const key = left.split(";")[0]; // ignore params
+    const key = left.split(";")[0];
     cur[key] = value;
   }
 
-  // Convertir a format intern simple
   return events.map(e => ({
     titol: e.SUMMARY || "Activitat",
     lloc: e.LOCATION || "",
@@ -126,9 +150,7 @@ function parseICS(icsText) {
     dtend: e.DTEND || ""
   }));
 }
-
 function icsDateToISODate(dt) {
-  // pot ser: 20260812T193000Z o 20260812 o 20260812T193000
   if (!dt) return null;
   const d = dt.replace("Z", "");
   const y = d.slice(0, 4);
@@ -144,14 +166,12 @@ async function loadJSON(path) {
   if (!r.ok) throw new Error(`No puc carregar ${path} (${r.status})`);
   return r.json();
 }
-
 async function loadCSV(url) {
   const r = await fetch(url, { cache: "no-store" });
   if (!r.ok) throw new Error(`No puc carregar CSV (${r.status})`);
   const t = await r.text();
   return rowsToObjects(parseCSV(t));
 }
-
 async function loadICS(url) {
   const r = await fetch(url, { cache: "no-store" });
   if (!r.ok) throw new Error(`No puc carregar ICS (${r.status})`);
@@ -170,24 +190,20 @@ function buildEfemeridesEspecials(objs) {
       clau: o.clau || "",
       titol: o.titol || "",
       hora: o.hora || "",
-      importancia: Number(o.importancia || 3),
-      detalls_json: o.detalls_json || ""
+      importancia: Number(o.importancia || 3)
     });
   }
   return out;
 }
-
 function buildFotosMes(objs) {
   const out = {};
   for (const o of objs) {
-    // any_mes format MM-YYYY (ex: 08-2026)
-    const key = (o.any_mes || "").trim();
+    const key = (o.any_mes || "").trim(); // MM-YYYY
     if (!key) continue;
     out[key] = o;
   }
   return out;
 }
-
 function buildActivitatsFromICS(events) {
   const out = {};
   for (const ev of events) {
@@ -204,32 +220,34 @@ function buildActivitatsFromICS(events) {
   return out;
 }
 
-// === UI bàsica (graella del mes actual) ===
+// === UI ===
 const graella = document.getElementById("graellaDies");
 const modal = document.getElementById("modalDia");
 const contingutDia = document.getElementById("contingutDia");
 const botoNocturn = document.getElementById("toggleNocturn");
 
-function setFotoMes(isoAnyMes) {
-  // isoAnyMes "2026-08"
-  const key = `${isoAnyMes.slice(5,7)}-${isoAnyMes.slice(0,4)}`; // MM-YYYY
+function setFotoMes(isoYM) {
+  const key = isoToMonthKey(isoYM); // MM-YYYY
   const f = fotosMes[key];
-  if (!f) return;
 
-  const img = document.querySelector("#fotoMes img");
+  const img = document.getElementById("imgFotoMes");
   const titol = document.getElementById("titolFoto");
-  img.src = f.imatge || img.src;
+
+  // si no hi ha dades del sheet, no trenquem res
+  if (!f) {
+    titol.textContent = "";
+    return;
+  }
+
+  if (f.imatge) img.src = f.imatge;      // ruta del sheet (relativa al repo)
   titol.textContent = f.titol || "";
-  img.onclick = () => {
-    // modal simple per veure detall
-    obreModalDetallFoto(f);
-  };
+  img.onclick = () => obreModalDetallFoto(f);
 }
 
 function obreModalDetallFoto(f) {
   contingutDia.innerHTML = `
     <h2>${f.titol || ""}</h2>
-    <img src="${f.imatge}" alt="${f.titol || ""}" style="width:100%;border-radius:10px">
+    ${f.imatge ? `<img src="${f.imatge}" alt="${f.titol || ""}" style="width:100%;border-radius:10px">` : ""}
     <p><b>Autor:</b> ${f.autor || ""}</p>
     <p><b>Lloc:</b> ${f.lloc || ""}</p>
     <p>${f.descripcio_llarga || f.descripcio_curta || ""}</p>
@@ -240,14 +258,11 @@ function obreModalDetallFoto(f) {
 function dibuixaMes(isoYM) {
   graella.innerHTML = "";
 
-  const [Y, M] = isoYM.split("-").map(Number); // M: 1-12
-  const daysInMonth = new Date(Y, M, 0).getDate(); // truc: dia 0 del mes següent
-  const firstDow = new Date(Y, M - 1, 1).getDay(); // 0=dg ... 6=ds
+  const [Y, M] = isoYM.split("-").map(Number);
+  const daysInMonth = new Date(Y, M, 0).getDate();
+  const firstDow = new Date(Y, M - 1, 1).getDay(); // 0=dg..6=ds
+  const offset = (firstDow + 6) % 7; // dl=0..dg=6
 
-  // Volem setmana començant dilluns (dl=0 ... dg=6)
-  const offset = (firstDow + 6) % 7;
-
-  // Caselles buides abans del dia 1
   for (let i = 0; i < offset; i++) {
     const empty = document.createElement("div");
     empty.className = "dia buit";
@@ -260,6 +275,8 @@ function dibuixaMes(isoYM) {
     const iso = `${Y}-${mm}-${dd}`;
 
     const info = efemerides[iso] || null;
+    const esp = efemeridesEspecials[iso] || [];
+    const act = activitats[iso] || [];
 
     const cel = document.createElement("div");
     cel.className = "dia";
@@ -272,9 +289,6 @@ function dibuixaMes(isoYM) {
           ? "#fff"
           : "#000";
     }
-
-    const esp = (efemeridesEspecials[iso] || []);
-    const act = (activitats[iso] || []);
 
     cel.innerHTML = `
       <div class="num">${d}</div>
@@ -298,7 +312,7 @@ function obreDia(iso) {
   const astrofoto = info.lluna_foscor?.apte_astrofotografia ? "🌑 Dia favorable per astrofotografia" : "";
 
   const espHtml = esp.length
-    ? `<h3>Efemèrides</h3><ul>${esp.map(e => `<li>${e.titol || e.codi}${e.hora ? " — " + e.hora : ""}</li>`).join("")}</ul>`
+    ? `<h3>Efemèrides</h3><ul>${esp.map(e => `<li>${(e.titol || e.codi)}${e.hora ? " — " + e.hora : ""}</li>`).join("")}</ul>`
     : `<h3>Efemèrides</h3><p>Cap destacat.</p>`;
 
   const actHtml = act.length
@@ -312,30 +326,96 @@ function obreDia(iso) {
     ${espHtml}
     ${actHtml}
   `;
-
   modal.classList.remove("ocult");
 }
 
 document.querySelector(".tancar").onclick = () => modal.classList.add("ocult");
 botoNocturn.onclick = () => document.body.classList.toggle("nocturn");
 
-// === Inici (carrega i dibuixa) ===
+// === ANIMACIÓ SWIPE ===
+const swipeInner = document.getElementById("swipeInner");
+const swipeArea  = document.getElementById("swipeArea");
+let animant = false;
+
+async function animaCanviMes(direccio){
+  if (animant) return;
+
+  const nouMes = clamp2026(direccio === "next" ? nextMonth(mesActual) : prevMonth(mesActual));
+  if (nouMes === mesActual) return;
+
+  animant = true;
+
+  swipeInner.classList.add("swipe-anim");
+  swipeInner.classList.remove("swipe-reset", "swipe-in-left", "swipe-in-right", "swipe-out-left", "swipe-out-right");
+  swipeInner.classList.add(direccio === "next" ? "swipe-out-left" : "swipe-out-right");
+
+  await wait(220);
+
+  swipeInner.classList.remove("swipe-out-left", "swipe-out-right");
+  swipeInner.classList.add(direccio === "next" ? "swipe-in-left" : "swipe-in-right");
+
+  renderMes(nouMes);
+
+  swipeInner.offsetHeight;
+
+  swipeInner.classList.remove("swipe-in-left", "swipe-in-right");
+  swipeInner.classList.add("swipe-reset");
+
+  await wait(220);
+
+  swipeInner.classList.remove("swipe-anim");
+  animant = false;
+}
+
+// Detector swipe
+let startX = 0, startY = 0, startT = 0;
+let tracking = false;
+
+swipeArea.addEventListener("touchstart", (e) => {
+  if (!e.touches || e.touches.length !== 1) return;
+  const t = e.touches[0];
+  startX = t.clientX;
+  startY = t.clientY;
+  startT = Date.now();
+  tracking = true;
+}, { passive: true });
+
+swipeArea.addEventListener("touchend", (e) => {
+  if (!tracking) return;
+  tracking = false;
+
+  const t = e.changedTouches[0];
+  const dx = t.clientX - startX;
+  const dy = t.clientY - startY;
+  const dt = Date.now() - startT;
+
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  if (absX < 50) return;
+  if (absY > absX * 0.7) return;
+  if (dt > 600) return;
+
+  if (dx < 0) animaCanviMes("next");
+  else animaCanviMes("prev");
+}, { passive: true });
+
+// === Inici ===
 async function inicia() {
   try {
-    // 1) locals
+    // local
     const e = await loadJSON("data/efemerides_2026.json");
     efemerides = e.dies || {};
 
-    // 2) sheets (fotos mes, efemèrides, config)
-    const [fotos, esp, cfg] = await Promise.all([
+    // sheets
+    const [fotos, esp] = await Promise.all([
       loadCSV(SHEET_FOTOS_MES),
-      loadCSV(SHEET_EFEMERIDES),
-      loadCSV(SHEET_CONFIG).catch(() => [])
+      loadCSV(SHEET_EFEMERIDES)
     ]);
     fotosMes = buildFotosMes(fotos);
     efemeridesEspecials = buildEfemeridesEspecials(esp);
 
-    // 3) calendari ICS
+    // calendari
     try {
       const icsText = await loadICS(CALENDAR_ICS);
       activitats = buildActivitatsFromICS(parseICS(icsText));
@@ -344,21 +424,19 @@ async function inicia() {
       activitats = {};
     }
 
-    // Mostram un mes per començar (agost 2026)
-    const mesInicial = "2026-08";
-    setFotoMes(mesInicial);
-    dibuixaMes(mesInicial);
+    renderMes(mesActual);
 
-    // 4) refresc suau (per agafar actualitzacions del SW)
+    // refresc suau per agafar canvis (si online)
     if (navigator.onLine) {
       setTimeout(async () => {
         try {
           const esp2 = await loadCSV(SHEET_EFEMERIDES);
           efemeridesEspecials = buildEfemeridesEspecials(esp2);
-          dibuixaMes(mesInicial);
+          renderMes(mesActual);
         } catch {}
       }, 15000);
     }
+
   } catch (err) {
     graella.innerHTML = `<p style="padding:10px">Error carregant dades: ${err.message}</p>`;
     console.error(err);
@@ -367,7 +445,7 @@ async function inicia() {
 
 inicia();
 
-// Registre SW
+// Registre SW (si el tens)
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
@@ -378,3 +456,4 @@ if ("serviceWorker" in navigator) {
     }
   });
 }
+
