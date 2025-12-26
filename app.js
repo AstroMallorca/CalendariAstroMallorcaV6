@@ -179,11 +179,7 @@ async function loadCSV(url) {
 async function loadICS(url) {
   const r = await fetch(url, { cache: "no-store" });
   if (!r.ok) throw new Error(`No puc carregar ICS (${r.status})`);
-  let t = await r.text();
-  // r.jina.ai pot afegir text abans del calendari real
-  const idx = t.indexOf("BEGIN:VCALENDAR");
-  if (idx !== -1) t = t.slice(idx);
-  return t;
+  return r.text();
 }
 
 // === Transformacions ===
@@ -234,6 +230,14 @@ const modal = document.getElementById("modalDia");
 const contingutDia = document.getElementById("contingutDia");
 const botoNocturn = document.getElementById("toggleNocturn");
 
+
+// Helper: "YYYY-MM" -> "MM-YYYY"
+function isoToMonthKey(isoYM) {
+  if (!isoYM || isoYM.length < 7) return "";
+  return `${isoYM.slice(5,7)}-${isoYM.slice(0,4)}`;
+}
+
+
 function setFotoMes(isoYM) {
   const key = isoToMonthKey(isoYM); // "MM-YYYY"
   const f = fotosMes[key];
@@ -246,9 +250,7 @@ function setFotoMes(isoYM) {
   const src = (f && f.imatge) ? f.imatge : fallbackPath;
 
   img.src = src;
-  const nom = (f && f.titol) ? f.titol : "";
-  const autor = (f && f.autor) ? f.autor : "";
-  titol.textContent = (nom || autor) ? (autor ? `${nom} — ${autor}` : nom) : "—";
+  titol.textContent = (f && f.titol) ? f.titol : "";
 
   img.onclick = (f ? () => obreModalDetallFoto(f) : null);
 
@@ -314,7 +316,7 @@ function dibuixaMes(isoYM) {
       <div class="num">${d}</div>
       <div class="badges">
         ${esp.slice(0,2).map(x => `<span class="badge">${x.codi}</span>`).join("")}
-        ${act.length ? `<img class="am-mini" src="assets/icons/astromallorca.png" alt="AstroMallorca">` : ""}
+        ${act.length ? `<span class="badge am">AM</span>` : ""}
       </div>
     `;
 
@@ -473,16 +475,9 @@ console.log("✅ Festius carregats:", festius.size, [...festius.entries()].slice
             loadCSV(SHEET_FESTIUS)
           ]);
           efemeridesEspecials = buildEfemeridesEspecials(esp2);
-
-          // mantén Map ISO -> nom
-          const m = new Map();
-          fest2.forEach(r => {
-            const iso = ddmmyyyyToISO(r.data);
-            if (!iso) return;
-            m.set(iso, (r.nom || "Festiu"));
-          });
-          festius = m;
-
+          festius = new Set(
+            fest2.map(r => ddmmyyyyToISO(r.nom)).filter(Boolean)
+          );
           renderMes(mesActual);
         } catch {}
       }, 15000);
