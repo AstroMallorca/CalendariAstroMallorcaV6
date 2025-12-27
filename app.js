@@ -285,34 +285,32 @@ const botoNocturn = document.getElementById("toggleNocturn");
 
 function setFotoMes(isoYM) {
   // El teu Sheet usa "YYYY-MM" (ex: 2026-08)
-// però també acceptam "MM-YYYY" per compatibilitat
-const keyYM = isoYM;              // "2026-08"
-const keyMY = isoToMonthKey(isoYM); // "08-2026"
-const f = fotosMes[keyYM] || fotosMes[keyMY];
-
+  // però mantenim compatibilitat amb "MM-YYYY" (ex: 08-2026)
+  const keyYM = isoYM;               // "2026-08"
+  const keyMY = isoToMonthKey(isoYM); // "08-2026"
+  const f = fotosMes[keyYM] || fotosMes[keyMY];
 
   const img = document.getElementById("imgFotoMes");
-  const titol = document.getElementById("titolFoto");
+  const titolEl = document.getElementById("titolFoto");
 
-  // Imatge
+  // Imatge (fallback si el sheet no té imatge)
   const fallbackPath = `assets/months/2026/${isoYM}.png`;
-  img.src = (f && f.imatge) ? f.imatge : fallbackPath;
+  const src = (f && f.imatge) ? f.imatge : fallbackPath;
+  img.src = src;
 
-  // Títol + autor
-  if (f && (f.titol || f.autor)) {
-    if (f.titol && f.autor) {
-      titol.textContent = `${f.titol} — ${f.autor}`;
-    } else {
-      titol.textContent = f.titol || f.autor;
-    }
-  } else {
-    titol.textContent = "";
+  // Text: "Títol — Autor"
+  if (titolEl) {
+    const t = (f && f.titol) ? f.titol : "";
+    const a = (f && f.autor) ? f.autor : "";
+    titolEl.textContent = (t && a) ? `${t} — ${a}` : (t || a || "");
   }
 
-  // Fallback si la imatge no existeix
+  // Si vols que en clicar la foto s'obri el detall (ja ho tens)
+  img.onclick = (f ? () => obreModalDetallFoto(f) : null);
+
   img.onerror = () => {
     img.onerror = null;
-    img.src = "assets/months/2026/default.png";
+    img.src = "assets/months/2026/default.png"; // opcional
   };
 }
 function obreModalDetallFoto(f) {
