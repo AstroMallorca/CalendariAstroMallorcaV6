@@ -81,10 +81,11 @@ body{
   padding: 6px 0;
 }
 .am-mini{
-  width: 14px;
-  height: 14px;
+  width: 28px;       /* 👈 tamany del logo */
+  height: auto;
   object-fit: contain;
-  display: inline-block;
+  display: block;
+  opacity: 0.9;
 }
 
 /* GRAELLA (SENSE SEPARACIÓ) */
@@ -259,23 +260,16 @@ body.nocturn .comptador-eclipsi__text{
   display:block;
 }
 
-/* Marca (debug) d'activitat al centre del dia */
-.dia .am-act-center{
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
-  font-weight:700;
-  font-size:30px;
-  opacity:0.35;
-  pointer-events:none;
-  z-index:1;
-  .dia .am-act-center img{
-  width: 30px;     /* 👈 tamany del logo */
-  height: auto;
-  display: block;
-}
-
 }
 .dia .num{ position:relative; z-index:2; }
-.dia .badges{ z-index:2; }
+.dia .badges{
+  position: absolute;
+  left: 50%;
+  top: 55%;               /* ajusta si cal: 50–60% */
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 2;
+}
+
