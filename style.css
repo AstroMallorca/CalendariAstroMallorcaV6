@@ -276,22 +276,3 @@ body.nocturn .comptador-eclipsi__text{
 }
 .dia .num{ position:relative; z-index:2; }
 .dia .badges{ z-index:2; }
-
-
-/* Logo AstroMallorca centrat als dies amb activitat (sense tapar número ni efemèrides) */
-.dia{ position: relative; }
-.dia .num{ position: relative; z-index: 2; }
-.dia .badges{ position: relative; z-index: 2; }
-.am-activity-center{
-  position: absolute;
-  left: 50%;
-  top: 55%;
-  transform: translate(-50%, -50%);
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  opacity: 0.35;
-  pointer-events: none;
-  z-index: 1;
-}
-body.nocturn .am-activity-center{ opacity: 0.45; }

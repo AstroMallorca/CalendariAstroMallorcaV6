@@ -1,21 +1,15 @@
 // app.js
 
 // === URLs (les teves) ===
-// IMPORTANT: aquest enllaç ve de "Publicar en la Web" i acaba en /pubhtml. Aquí usam la KEY base.
-const SHEETS_KEY = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWf6OL8LYzMsBPuxvI_h4s9-0__hru3hWK9D2ewyccoku9ndl2VhZ0GS8P9uEigShJEehsy2UktnY2";
+const BASE_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWf6OL8LYzMsBPuxvI_h4s9-0__hru3hWK9D2ewyccoku9ndl2VhZ0GS8P9uEigShJEehsy2UktnY2/pub";
 
-// CSV (Google Sheets) — fem servir 2 formats (pub + gviz) i després proxys si cal
-function sheetCsvFallbacks(gid){
-  const pub = `${SHEETS_KEY}/pub?gid=${gid}&single=true&output=csv`;
-  const gviz = `${SHEETS_KEY}/gviz/tq?tqx=out:csv&gid=${gid}`;
-  // IMPORTANT: primer provam directe; si falla, provam proxys
-  return [...csvFallbacks(pub), ...csvFallbacks(gviz)];
-}
 
-const SHEET_FOTOS_MES_URLS  = sheetCsvFallbacks(0);
-const SHEET_EFEMERIDES_URLS = sheetCsvFallbacks(1305356303);
-const SHEET_CONFIG_URLS     = sheetCsvFallbacks(1324899531);
-const SHEET_FESTIUS_URLS    = sheetCsvFallbacks(1058273430);
+const SHEET_FOTOS_MES = `${BASE_SHEETS}?output=csv&gid=0`;
+const SHEET_EFEMERIDES = `${BASE_SHEETS}?output=csv&gid=1305356303`;
+const SHEET_CONFIG = `${BASE_SHEETS}?output=csv&gid=1324899531`;
+
+// ✅ FESTIUS (A=data DD-MM-YYYY, B=nom)
+const SHEET_FESTIUS = `${BASE_SHEETS}?output=csv&gid=1058273430`;
 
 // ICS públic
 const CALENDAR_ICS =
@@ -504,10 +498,9 @@ function dibuixaMes(isoYM) {
 
     cel.innerHTML = `
       <div class="num">${d}</div>
-      ${act.length ? `<img class="am-activity-center" src="assets/icons/astromallorca.png" alt="AstroMallorca">` : ""}
       <div class="badges">
         ${esp.slice(0,6).map(x => `<img class="esp-icon" src="${x.codi}" alt="${(x.titol||x.clau||"").replace(/"/g,"&quot;")}" title="${(x.titol||"").replace(/"/g,"&quot;")}" loading="lazy">`).join("")}
-        
+        ${act.length ? `<img class="am-mini" src="assets/icons/astromallorca.png" alt="AstroMallorca">` : ""}
       </div>
     `;
 
