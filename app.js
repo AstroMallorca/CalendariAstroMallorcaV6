@@ -70,6 +70,75 @@ const MESOS_CA = [
   "Gener","Febrer","Març","Abril","Maig","Juny",
   "Juliol","Agost","Setembre","Octubre","Novembre","Desembre"
 ];
+// === Localització (per a futurs càlculs: sortida/posta, etc.) ===
+// No forçam permís: si l'usuari el denega, fem servir Mallorca per defecte.
+const DEFAULT_OBSERVER = { latitude: 39.5696, longitude: 2.6502, elevation: 0 }; // Palma aprox.
+let APP_OBSERVER = { ...DEFAULT_OBSERVER };
+
+function initObserverFromDevice(){
+  if (!("geolocation" in navigator)) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      APP_OBSERVER = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        elevation: pos.coords.altitude ?? 0
+      };
+      // Si ja hi ha calendari pintat, el repintam per adaptar càlculs al lloc.
+      try { dibuixaMes(STATE.isoYM); } catch(e) {}
+    },
+    () => { /* silenci: mantenim DEFAULT_OBSERVER */ },
+    { enableHighAccuracy: true, maximumAge: 6 * 60 * 60 * 1000, timeout: 8000 }
+  );
+}
+
+// === Fases lunars (quarters) ===
+// Mostram icones només als 4 quarts: nova, quart creixent, plena, quart minvant.
+const MOON_ICON_BY_QUARTER = {
+  0: "assets/moon/nova.png",
+  1: "assets/moon/quart_creixent.png",
+  2: "assets/moon/plena.png",
+  3: "assets/moon/quart_minvant.png",
+};
+
+// Cache per no recalcular cada repintat
+const _moonQuarterCache = new Map(); // key: "YYYY-MM" -> Map(day -> [quarters])
+
+function getMoonQuartersForMonth(year, monthIndex0){
+  const key = `${year}-${String(monthIndex0+1).padStart(2,"0")}`;
+  if (_moonQuarterCache.has(key)) return _moonQuarterCache.get(key);
+
+  const map = new Map(); // day -> [quarter, quarter...]
+  _moonQuarterCache.set(key, map);
+
+  // Si la llibreria no està carregada, deixam map buit.
+  if (typeof Astronomy === "undefined" || !Astronomy.SearchMoonQuarter) return map;
+
+  const start = new Date(year, monthIndex0, 1, 0, 0, 0);
+  const end   = new Date(year, monthIndex0 + 1, 1, 0, 0, 0);
+
+  // Primera fase després de "start - 7 dies" per no perdre un esdeveniment que cau el dia 1.
+  let mq = Astronomy.SearchMoonQuarter(new Date(start.getTime() - 7*24*3600*1000));
+
+  // Recorrem fins sortir del mes (amb marge).
+  for (let guard = 0; guard < 12; guard++){
+    const dt = mq.time?.date ? new Date(mq.time.date.getTime()) : null; // es mostra en TZ local del dispositiu
+    if (dt){
+      const y = dt.getFullYear();
+      const m = dt.getMonth();
+      const day = dt.getDate();
+      if (y === year && m === monthIndex0){
+        const arr = map.get(day) || [];
+        arr.push(mq.quarter);
+        map.set(day, arr);
+      }
+      if (dt.getTime() > end.getTime() + 2*24*3600*1000) break;
+    }
+    mq = Astronomy.NextMoonQuarter(mq);
+  }
+
+  return map;
+}
 
 // === AVUI (per pintar groc i decidir el mes inicial) ===
 const AVUI = new Date();
@@ -460,6 +529,7 @@ function dibuixaMes(isoYM) {
   const daysInMonth = new Date(Y, M, 0).getDate();
   const firstDow = new Date(Y, M - 1, 1).getDay(); // 0=dg..6=ds
   const offset = (firstDow + 6) % 7; // dl=0..dg=6
+  const moonByDay = getMoonQuartersForMonth(Y, M - 1);
 
   for (let i = 0; i < offset; i++) {
     const empty = document.createElement("div");
@@ -495,7 +565,14 @@ function dibuixaMes(isoYM) {
         (info.lluna_foscor.color === "#000000" || info.lluna_foscor.color === "#333333")
           ? "#fff"
           : "#000";
+      // icona fase lunar (quarts) a dalt-dreta
+const moonQuarters = moonByDay.get(d) || [];
+const moonHtml = moonQuarters.length
+  ? `<div class="moon-phases">${moonQuarters.map(q => `<img class="moon-icon" src="${MOON_ICON_BY_QUARTER[q]}" alt="Fase lluna">`).join("")}</div>`
+  : "";
+
     }
+    
 
    cel.innerHTML = `
   <div class="num">${d}</div>
@@ -620,6 +697,7 @@ swipeArea.addEventListener("touchend", (e) => {
 
 // === Inici ===
 async function inicia() {
+  initObserverFromDevice();
   try {
     // local
     const e = await loadJSON("data/efemerides_2026.json");
