@@ -10,8 +10,13 @@
   <h1>La Lluna avui</h1>
   <p>Data: <span id="d"></span></p>
   <script>
-    const p = new URLSearchParams(location.search);
-    document.getElementById("d").textContent = p.get("date") || "";
-  </script>
+  const p = new URLSearchParams(location.search);
+  document.getElementById("d").textContent = p.get("date") || "";
+
+  document.getElementById("back").addEventListener("click", (e) => {
+    e.preventDefault();
+    window.history.back();
+  });
+</script>
 </body>
 </html>
