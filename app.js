@@ -859,9 +859,6 @@ async function obreDia(iso) {
       // it és un "event" (type/category/title/year/description)
       if (typeof it === "string") return `<li>${it}</li>`;
 
-      const yv = it.year ?? it.any;
-const year = yv ? `<b>${yv}</b> — ` : "";
-
 const title = it.title || it.titol || it.nom || "";
 const desc  = it.description || it.descripcio || it.descripció || it.text || it.texto || "";
 
