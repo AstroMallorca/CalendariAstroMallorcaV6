@@ -171,14 +171,16 @@
         }
       }
 
-      function julianDay(date){
-        try{
-          const t = Astronomy.MakeTime(date);
-          return t.ut;
-        }catch(e){
-          return NaN;
-        }
-      }
+      ffunction julianDay(date){
+  try{
+    const t = Astronomy.MakeTime(date);
+    // JD clàssic: 2451545.0 és el JD de J2000.0 (2000-01-01 12:00 TT aprox)
+    return 2451545.0 + t.ut;
+  }catch(e){
+    return NaN;
+  }
+}
+
 
       // ===== CÀLCULS PER AL DIA =====
       const startMorning = new Date(day0.getFullYear(), day0.getMonth(), day0.getDate(), 0, 0, 0);
