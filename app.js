@@ -955,37 +955,42 @@ ${nomFestiu ? `<div class="dia-festiu">🎉 ${nomFestiu}</div>` : ""}
     ${especialsHtml}
 
     <!-- 5) Bloc Sol/Lluna/Planetes/Messiers -->
-<div class="dia-row dia-link" data-href="sol.html?date=${iso}${obsQ}">
-  <div class="dia-row-icon">🌞</div>
-  <div class="dia-row-text">
-    <div class="dia-row-title">Sortida i posta de Sol</div>
-    <div class="dia-row-sub">${solTxt}</div>
+<div class="dia-card">
+
+  <div class="dia-row dia-link" data-href="sol.html?date=${iso}${obsQ}">
+    <div class="dia-row-icon">🌞</div>
+    <div class="dia-row-text">
+      <div class="dia-row-title">Sortida i posta de Sol</div>
+      <div class="dia-row-sub">${solTxt}</div>
+    </div>
   </div>
+
+  <div class="dia-row dia-link" data-href="lluna.html?date=${iso}${obsQ}">
+    <div class="dia-row-icon">🌙</div>
+    <div class="dia-row-text">
+      <div class="dia-row-title">Sortida i posta de Lluna</div>
+      <div class="dia-row-sub">${llunaTxt}</div>
+    </div>
+  </div>
+
+  <div class="dia-row dia-link" data-href="planetes.html?date=${iso}${obsQ}">
+    <div class="dia-row-icon">🪐</div>
+    <div class="dia-row-text">
+      <div class="dia-row-title">Planetes visibles</div>
+      <div class="dia-row-sub">Obre per veure detalls</div>
+    </div>
+  </div>
+
+  <div class="dia-row dia-link" data-href="messiers.html?date=${iso}${obsQ}">
+    <div class="dia-row-icon">🌌</div>
+    <div class="dia-row-text">
+      <div class="dia-row-title">Messiers visibles</div>
+      <div class="dia-row-sub">Obre per veure detalls</div>
+    </div>
+  </div>
+
 </div>
 
-<div class="dia-row dia-link" data-href="lluna.html?date=${iso}${obsQ}">
-  <div class="dia-row-icon">🌙</div>
-  <div class="dia-row-text">
-    <div class="dia-row-title">Sortida i posta de Lluna</div>
-    <div class="dia-row-sub">${llunaTxt}</div>
-  </div>
-</div>
-
-<div class="dia-row dia-link" data-href="planetes.html?date=${iso}${obsQ}">
-  <div class="dia-row-icon">🪐</div>
-  <div class="dia-row-text">
-    <div class="dia-row-title">Planetes visibles</div>
-    <div class="dia-row-sub">Obre per veure detalls</div>
-  </div>
-</div>
-
-<div class="dia-row dia-link" data-href="messiers.html?date=${iso}${obsQ}">
-  <div class="dia-row-icon">🌌</div>
-  <div class="dia-row-text">
-    <div class="dia-row-title">Messiers visibles</div>
-    <div class="dia-row-sub">Obre per veure detalls</div>
-  </div>
-</div>
 
     <!-- 6) Efemèrides històriques (al final) -->
     ${historicHtml}
