@@ -380,8 +380,8 @@ function getRiseSet(bodyName, iso, observer){
     const obs = new Astronomy.Observer(lat, lon, isFinite(h) ? h : 0);
 
     // 4) Rise / Set
-    const riseEvt = Astronomy.SearchRiseSet(body, obs, +1, start, 1);
-    const setEvt  = Astronomy.SearchRiseSet(body, obs, -1, start, 1);
+    const riseEvt = Astronomy.SearchRiseSet(body, obs, +1, start, 1, 0);
+    const setEvt  = Astronomy.SearchRiseSet(body, obs, -1, start, 1, 0);
 
     const rise = riseEvt?.time?.date ? new Date(riseEvt.time.date.getTime()) : null;
     const set  = setEvt?.time?.date  ? new Date(setEvt.time.date.getTime())  : null;
