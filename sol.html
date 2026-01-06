@@ -136,7 +136,7 @@
 
   function tryRiseSet(direction, startDate){
     try{
-      const evt = Astronomy.SearchRiseSet(Astronomy.Body.Sun, obs, direction, startDate, 2);
+      const evt = Astronomy.SearchRiseSet(Astronomy.Body.Sun, obs, direction, startDate, 2, 0);
       return evt?.time?.date ? new Date(evt.time.date.getTime()) : null;
     }catch(e){
       return null;
@@ -145,7 +145,7 @@
 
   function tryAltitudeCrossing(altDeg, direction, startDate){
     try{
-      const evt = Astronomy.SearchAltitude(Astronomy.Body.Sun, obs, direction, startDate, 2, altDeg);
+      const evt = Astronomy.SearchAltitude(Astronomy.Body.Sun, obs, direction, startDate, 2, altDeg, 0);
       return evt?.time?.date ? new Date(evt.time.date.getTime()) : null;
     }catch(e){
       return null;
