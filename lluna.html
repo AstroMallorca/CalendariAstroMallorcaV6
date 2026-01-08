@@ -102,43 +102,87 @@
       return `${Math.round(x)}%`;
     }
 
-    function renderMoonSVG(opts){
-      const {
-        // geometria
-        sizePx = 240,
-        // radi de referència dins viewBox
-        R_perigeu = 108,
-        R_apogeu  = 96,
-        R_now     = 102,
+function renderMoonSVG(opts){
+  const {
+    R_perigeu = 108,
+    R_apogeu  = 96,
+    R_now     = 102,
+    illum = 0.5,        // 0..1
+    waxing = true       // creixent/minvant
+  } = opts;
 
-        // fase
-        illum = 0.5,        // 0..1
-        waxing = true       // creixent/minvant
-      } = opts;
+  const cx = 120, cy = 120;
+  const R = R_now;
 
-      // viewBox centrat
-      const cx = 120, cy = 120;
+  // === Terminador real (el·lipse) ===
+  // cos(phi) = 2*illum - 1  (phi mesurat des de plena)
+  // rx = R * |cos(phi)|
+  const cosPhi = (2 * clamp(illum, 0, 1)) - 1; // [-1..1]
+  let rx = Math.abs(cosPhi) * R;               // [0..R]
+  if (rx < 0.001) rx = 0.001;
 
-      // Disc actual escalat (mida del dia)
-      const R = R_now;
+  const isGibbous = illum > 0.5;
 
-      // Per dibuixar la fase:
-      // - mapejam il·luminació a una "terminator offset" simple.
-      //   k=0 (nova)  -> terminator molt cap a dreta/esquerra (disc fosc)
-      //   k=1 (plena) -> terminator fora (disc il·luminat complet)
-      // Amb aquest model: offset = (1 - 2k) * R, i el disc il·luminat és la intersecció
-      // del disc principal amb un disc auxiliar desplaçat.
-      const k = clamp(illum, 0, 1);
-      const offset = (1 - 2*k) * R;          // -R..+R
-      const lightX = waxing ? (cx + offset) : (cx - offset);
+  // Arc del limbe (top->bottom)
+  const sweepLimb = waxing ? 1 : 0;
 
-      // Construcció SVG amb:
-      // - anell perigeu (groc)
-      // - anell apogeu (blau)
-      // - disc fosc base
-      // - disc il·luminat (cercle desplaçat) retallat pel disc principal
+  // Arc del terminador (bottom->top)
+  let sweepTerm;
+  if (!isGibbous) {
+    // crescent
+    sweepTerm = waxing ? 0 : 1;
+  } else {
+    // gibbous
+    sweepTerm = waxing ? 1 : 0;
+  }
 
-      return `
+  const almostNew = illum < 0.01;
+  const almostFull = illum > 0.99;
+
+  const pathLit = `
+    M ${cx} ${cy - R}
+    A ${R} ${R} 0 0 ${sweepLimb} ${cx} ${cy + R}
+    A ${rx} ${R} 0 0 ${sweepTerm} ${cx} ${cy - R}
+    Z
+  `;
+
+  return `
+<svg viewBox="0 0 240 240" aria-label="Fase lunar" role="img">
+  <defs>
+    <radialGradient id="gMoonLight" cx="35%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#f2f2f2"/>
+      <stop offset="55%" stop-color="#cfcfcf"/>
+      <stop offset="100%" stop-color="#9f9f9f"/>
+    </radialGradient>
+
+    <radialGradient id="gMoonDark" cx="35%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#4b4b4b"/>
+      <stop offset="60%" stop-color="#3a3a3a"/>
+      <stop offset="100%" stop-color="#2a2a2a"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Anells de referència -->
+  <circle cx="${cx}" cy="${cy}" r="${R_perigeu}" fill="none" stroke="var(--perigeu)" stroke-width="2.5"></circle>
+  <circle cx="${cx}" cy="${cy}" r="${R_apogeu}"  fill="none" stroke="var(--apogeu)"  stroke-width="2.5"></circle>
+
+  <!-- Disc fosc base -->
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#gMoonDark)"></circle>
+
+  <!-- Part il·luminada real -->
+  ${
+    almostNew
+      ? ``
+      : almostFull
+        ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#gMoonLight)"></circle>`
+        : `<path d="${pathLit}" fill="url(#gMoonLight)"></path>`
+  }
+
+  <!-- Contorn -->
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1"></circle>
+</svg>`;
+}
+
 <svg viewBox="0 0 240 240" aria-label="Fase lunar" role="img">
   <defs>
     <radialGradient id="gMoonLight" cx="35%" cy="35%" r="70%">
