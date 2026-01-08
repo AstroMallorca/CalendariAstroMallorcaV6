@@ -16,22 +16,16 @@
 
   --perigeu:#ffd400;
   --apogeu:#19d6ff;
-
-  --accent:#111111; /* per botons / detalls */
 }
 
-/* MODE NOCTURN MANUAL: fons negre + lletres vermelles */
-body.night{
-  --bg:#0b0c10;
-  --text:#ff3b3b;
-  --muted:rgba(255,59,59,.75);
-  --border:rgba(255,59,59,.22);
-  --card: rgba(255,59,59,0.07);
+body.nocturn{
+  --bg:#000000;
+  --text:#ff2a2a;
+  --muted:rgba(255,42,42,.75);
+  --border:rgba(255,42,42,.35);
 
   --perigeu:#ffd84d;
   --apogeu:#4fe3ff;
-
-  --accent:#ff3b3b;
 }
 
 body{
@@ -420,7 +414,19 @@ a:active{ opacity:1; }
         errEl.style.display = "block";
         errEl.textContent = "Error: " + (e?.message || e);
       }
-    })();
+       })();
+
+    // Hereta el mode nocturn de l'app (localStorage) i escolta canvis
+    try{
+      const apply = () => {
+        const isNocturn = localStorage.getItem("nocturn") === "1";
+        document.body.classList.toggle("nocturn", isNocturn);
+      };
+      apply();
+      window.addEventListener("storage", (e) => {
+        if (e.key === "nocturn") apply();
+      });
+    }catch(e){}
   </script>
 </body>
 </html>
