@@ -4,19 +4,259 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Lluna</title>
-</head>
-<body style="font-family:system-ui;padding:16px">
-  <a href="#" id="back">← Tornar</a>
-  <h1>La Lluna avui</h1>
-  <p>Data: <span id="d"></span></p>
-  <script>
-  const p = new URLSearchParams(location.search);
-  document.getElementById("d").textContent = p.get("date") || "";
 
-  document.getElementById("back").addEventListener("click", (e) => {
-    e.preventDefault();
-    window.history.back();
-  });
-</script>
+  <style>
+    :root{
+      --bg:#fff;
+      --text:#111;
+      --muted:rgba(0,0,0,.65);
+      --border:rgba(0,0,0,.18);
+      --perigeu:#ffd400; /* groc */
+      --apogeu:#19d6ff;  /* blau/cian */
+    }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:16px;
+    }
+    a{ color: var(--text); text-decoration:none; opacity:.9; }
+    a:active{ opacity:1; }
+
+    .wrap{ max-width:520px; margin:0 auto; }
+    .top{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; }
+    .kpi{ white-space:pre-line; font-size:16px; line-height:1.2; }
+    .kpi b{ font-weight:800; }
+    .muted{ color:var(--muted); font-size:14px; margin-top:8px; }
+
+    /* mida pensada per mòbil (com a la captura) */
+    .moonbox{
+      display:flex;
+      justify-content:center;
+      margin: 16px 0 10px;
+    }
+    .moonbox svg{
+      width: 240px;
+      height: 240px;
+      max-width: 70vw;
+      max-height: 70vw;
+      overflow: visible;
+    }
+
+    .err{
+      margin-top:16px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      font-size:14px;
+      background: rgba(0,0,0,0.03);
+      display:none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <a href="#" id="back">← Tornar</a>
+
+    <div class="top">
+      <h1 style="margin:10px 0 0; font-size:22px;">La Lluna avui</h1>
+      <div class="kpi" id="kpi">Carregant…</div>
+    </div>
+
+    <div class="muted">Data: <span id="d"></span></div>
+
+    <div class="moonbox" id="moonbox"></div>
+
+    <div class="muted" id="meta"></div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <!-- astronomy-engine (local) -->
+  <script src="assets/js/astronomy.browser.min.js"></script>
+
+  <script>
+    const p = new URLSearchParams(location.search);
+    const dateStr = p.get("date"); // "YYYY-MM-DD"
+
+    document.getElementById("d").textContent = dateStr || "";
+
+    document.getElementById("back").addEventListener("click", (e) => {
+      e.preventDefault();
+      window.history.back();
+    });
+
+    function parseISODateLocal(iso){
+      if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return new Date();
+      const [y,m,d] = iso.split("-").map(Number);
+      return new Date(y, m-1, d, 12, 0, 0); // migdia local: estable per càlculs "del dia"
+    }
+
+    function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+
+    function deg2rad(d){ return d * Math.PI / 180; }
+
+    function fmtPct(x){
+      if (!Number.isFinite(x)) return "—";
+      return `${Math.round(x)}%`;
+    }
+
+    function renderMoonSVG(opts){
+      const {
+        // geometria
+        sizePx = 240,
+        // radi de referència dins viewBox
+        R_perigeu = 108,
+        R_apogeu  = 96,
+        R_now     = 102,
+
+        // fase
+        illum = 0.5,        // 0..1
+        waxing = true       // creixent/minvant
+      } = opts;
+
+      // viewBox centrat
+      const cx = 120, cy = 120;
+
+      // Disc actual escalat (mida del dia)
+      const R = R_now;
+
+      // Per dibuixar la fase:
+      // - mapejam il·luminació a una "terminator offset" simple.
+      //   k=0 (nova)  -> terminator molt cap a dreta/esquerra (disc fosc)
+      //   k=1 (plena) -> terminator fora (disc il·luminat complet)
+      // Amb aquest model: offset = (1 - 2k) * R, i el disc il·luminat és la intersecció
+      // del disc principal amb un disc auxiliar desplaçat.
+      const k = clamp(illum, 0, 1);
+      const offset = (1 - 2*k) * R;          // -R..+R
+      const lightX = waxing ? (cx + offset) : (cx - offset);
+
+      // Construcció SVG amb:
+      // - anell perigeu (groc)
+      // - anell apogeu (blau)
+      // - disc base (gris amb gradient)
+      // - màscara d'il·luminació (un "lent" clar) + ombra suau
+
+      return `
+<svg viewBox="0 0 240 240" aria-label="Fase lunar" role="img">
+  <defs>
+    <radialGradient id="gMoon" cx="35%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#f2f2f2"/>
+      <stop offset="55%" stop-color="#cfcfcf"/>
+      <stop offset="100%" stop-color="#9f9f9f"/>
+    </radialGradient>
+
+    <!-- Clip del disc actual (mida del dia) -->
+    <clipPath id="clipDisc">
+      <circle cx="${cx}" cy="${cy}" r="${R}"></circle>
+    </clipPath>
+
+    <!-- Màscara de llum: intersecció de disc principal amb disc auxiliar -->
+    <mask id="maskLight">
+      <rect x="0" y="0" width="240" height="240" fill="black"></rect>
+      <g clip-path="url(#clipDisc)">
+        <circle cx="${lightX}" cy="${cy}" r="${R}" fill="white"></circle>
+      </g>
+    </mask>
+
+    <!-- Ombra suau al costat fosc (una mica de profunditat) -->
+    <linearGradient id="gShade" x1="${waxing ? 1 : 0}" y1="0" x2="${waxing ? 0 : 1}" y2="0">
+      <stop offset="0%" stop-color="rgba(0,0,0,0.35)"/>
+      <stop offset="55%" stop-color="rgba(0,0,0,0.0)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Anells de referència -->
+  <circle cx="${cx}" cy="${cy}" r="${R_perigeu}" fill="none" stroke="var(--perigeu)" stroke-width="2.5"></circle>
+  <circle cx="${cx}" cy="${cy}" r="${R_apogeu}"  fill="none" stroke="var(--apogeu)"  stroke-width="2.5"></circle>
+
+  <!-- Disc base (gris) -->
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#gMoon)"></circle>
+
+  <!-- Lluminós (mateix disc base però retallat per màscara) -->
+  <g mask="url(#maskLight)">
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#gMoon)"></circle>
+  </g>
+
+  <!-- Ombra suau -->
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#gShade)" opacity="0.55" clip-path="url(#clipDisc)"></circle>
+
+  <!-- Contorn fi del disc actual -->
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1"></circle>
+</svg>`;
+    }
+
+    (function main(){
+      const errEl = document.getElementById("err");
+      const kpiEl = document.getElementById("kpi");
+      const metaEl = document.getElementById("meta");
+      const box = document.getElementById("moonbox");
+
+      try{
+        if (typeof Astronomy === "undefined") throw new Error("Astronomy Engine no s'ha carregat.");
+
+        const day = parseISODateLocal(dateStr);
+
+        const t = Astronomy.MakeTime(day);
+
+        // Fase (0..360) : 0 nova, 90 quart creixent, 180 plena, 270 quart minvant
+        const phaseDeg = Astronomy.MoonPhase(t);
+        const waxing = (phaseDeg >= 0 && phaseDeg < 180);
+
+        // Il·luminació 0..1 a partir de l'angle fase 0..180 simètric
+        const phaseAngle = (phaseDeg <= 180) ? phaseDeg : (360 - phaseDeg);
+        const illum = (1 - Math.cos(deg2rad(phaseAngle))) / 2;
+
+        // Distància geocèntrica Terra-Lluna (AU) i diàmetre angular (arcmin)
+        const v = Astronomy.GeoVector(Astronomy.Body.Moon, t, true);
+        const rAU = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+
+        // Conversions
+        const AU_KM = (typeof Astronomy.AU_KM === "number") ? Astronomy.AU_KM : 149597870.7;
+        const distKm = rAU * AU_KM;
+
+        // Diàmetre angular aproximat: 2*atan(R_moon / dist)
+        const R_MOON_KM = 1737.4;
+        const angRad = 2 * Math.atan(R_MOON_KM / distKm);
+        const angDeg = angRad * 180 / Math.PI;
+        const angArcmin = angDeg * 60;
+
+        // Referències d’apogeu/perigeu (arcmin) per escalar el dibuix.
+        // (valors típics; no “forçam” el perigeu exacte del dia, només són anells de referència visuals)
+        const APog = 29.4;
+        const PErig = 33.5;
+
+        // Radi base del disc dins SVG: mapeig lineal entre apogeu/perigeu
+        const R_perigeu = 108;
+        const R_apogeu  = 96;
+
+        const u = clamp((angArcmin - APog) / (PErig - APog), 0, 1);
+        const R_now = R_apogeu + u * (R_perigeu - R_apogeu);
+
+        // Pintar KPI
+        kpiEl.innerHTML =
+          `<b>Il·luminació:</b> ${fmtPct(illum*100)}\n` +
+          `<b>Fase:</b> ${phaseDeg.toFixed(1)}° (${waxing ? "creixent" : "minvant"})\n` +
+          `<b>Mida aparent:</b> ${angArcmin.toFixed(1)}′`;
+
+        metaEl.textContent =
+          `Distància geocèntrica: ${Math.round(distKm).toLocaleString("ca-ES")} km · ` +
+          `Anells: groc=perigeu (màx), blau=apogeu (mín)`;
+
+        // SVG
+        box.innerHTML = renderMoonSVG({
+          R_perigeu, R_apogeu, R_now,
+          illum, waxing
+        });
+
+      }catch(e){
+        console.error(e);
+        errEl.style.display = "block";
+        errEl.textContent = "Error: " + (e?.message || e);
+        kpiEl.textContent = "No s'ha pogut calcular la Lluna.";
+      }
+    })();
+  </script>
 </body>
 </html>
