@@ -7,7 +7,7 @@
 
   <style>
 :root{
-  /* DEFAULT (dia) */
+  /* DIA (per defecte) */
   --bg:#ffffff;
   --text:#111111;
   --muted:rgba(0,0,0,.65);
@@ -18,11 +18,13 @@
   --apogeu:#19d6ff;
 }
 
+/* NOCTURN (heretat de l'app: body.nocturn) */
 body.nocturn{
   --bg:#000000;
   --text:#ff2a2a;
   --muted:rgba(255,42,42,.75);
   --border:rgba(255,42,42,.35);
+  --card: rgba(255,42,42,0.06);
 
   --perigeu:#ffd84d;
   --apogeu:#4fe3ff;
@@ -44,19 +46,8 @@ a:active{ opacity:1; }
 .topbar{
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:flex-start;
   gap:12px;
-}
-
-.btn{
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--accent);
-  padding: 8px 10px;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
 }
 
 .err{
@@ -72,11 +63,11 @@ a:active{ opacity:1; }
 /* Capçalera */
 .header{ margin-top: 6px; }
 .header h1{
-  margin: 8px 0 6px;
+  margin: 10px 0 6px;
   font-size: 40px;
   line-height: 1.05;
   letter-spacing: -0.5px;
-  text-align: center;   /* ← AFEGIT */
+  text-align: center;
 }
 
 .sub{
@@ -117,7 +108,7 @@ a:active{ opacity:1; }
   line-height: 1.2;
 }
 
-/* KPI “taula” 2 columnes */
+/* KPI 2 columnes */
 .kpiGrid{
   width: 100%;
   margin: 14px auto 8px;
@@ -146,7 +137,6 @@ a:active{ opacity:1; }
     </div>
 
     <div class="header">
-      <!-- TÍTOL: ara serà el nom de la fase -->
       <h1 id="title">—</h1>
     </div>
 
@@ -163,7 +153,6 @@ a:active{ opacity:1; }
 
     <div class="kpiGrid" id="kpiGrid">
       <div class="k">Il·luminació:</div><div class="v" id="kIll">—</div>
-      <!-- Fase: només graus -->
       <div class="k">Fase:</div><div class="v" id="kPhaseDeg">—</div>
       <div class="k">Mida aparent:</div><div class="v" id="kSize">—</div>
       <div class="k">Distància:</div><div class="v" id="kDist">—</div>
@@ -205,8 +194,8 @@ a:active{ opacity:1; }
       return d >= a0 && d <= a1;
     }
 
-    // === FIX IMPORTANT: cercam l'esdeveniment de fase EXACTA tant cap endavant com cap enrere ===
-    function phaseExactNameForDay(day){
+    // Cerca fase exacta dins el DIA, tant endavant com enrere
+    function phaseExactEventForDay(day){
       const t0 = Astronomy.MakeTime(day);
       const targets = [
         { angle: 0,   name: "Lluna nova" },
@@ -216,24 +205,20 @@ a:active{ opacity:1; }
       ];
 
       for (const it of targets){
-        // Cerca endavant i enrere (per no perdre events que passen abans del migdia)
-        const fwd = Astronomy.SearchMoonPhase(it.angle, t0,  3);
+        const fwd  = Astronomy.SearchMoonPhase(it.angle, t0,  3);
         const back = Astronomy.SearchMoonPhase(it.angle, t0, -3);
 
-        if (fwd && inSameLocalDay(fwd.date, day)) return it.name;
-        if (back && inSameLocalDay(back.date, day)) return it.name;
+        if (fwd  && inSameLocalDay(fwd.date,  day)) return { name: it.name, date: fwd.date  };
+        if (back && inSameLocalDay(back.date, day)) return { name: it.name, date: back.date };
       }
-      return "";
+      return null;
     }
 
-    // Etiqueta “calendari astronòmic”
     function phaseLabelForDay(phaseDeg, illum, day){
-      const exact = phaseExactNameForDay(day);
-      if (exact) return exact;
+      const exactEv = phaseExactEventForDay(day);
+      if (exactEv) return exactEv.name;
 
       const d = ((phaseDeg % 360) + 360) % 360;
-
-      // Nota: això només s'usa si NO hi ha fase exacta dins el dia
       if (d > 0 && d < 180){
         return (illum < 0.5) ? "Crescent creixent" : "Gibosa creixent";
       } else {
@@ -241,7 +226,6 @@ a:active{ opacity:1; }
       }
     }
 
-    // Edat de la lluna (dies des de la lluna nova anterior)
     function moonAgeDays(day){
       const t = Astronomy.MakeTime(day);
       const prevNew = Astronomy.SearchMoonPhase(0, t, -35);
@@ -250,11 +234,63 @@ a:active{ opacity:1; }
       return ms / (1000 * 60 * 60 * 24);
     }
 
-    // Petita utilitat per posar el títol amb majúscula inicial (estil "Gibosa minvant")
     function titleCaseCatalan(s){
       s = (s || "").trim();
       if (!s) return s;
       return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function moonDistanceKmAt(date){
+      const t = Astronomy.MakeTime(date);
+      const v = Astronomy.GeoVector(Astronomy.Body.Moon, t, true);
+      const rAU = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+      const AU_KM = (typeof Astronomy.AU_KM === "number") ? Astronomy.AU_KM : 149597870.7;
+      return rAU * AU_KM;
+    }
+
+    // Detecta si el perigeu o apogeu cau dins el DIA (mostreig simple)
+    function apsisTagForDay(day, spanDays = 2, stepHours = 1){
+      const start = new Date(day); start.setHours(0,0,0,0);
+      const end   = new Date(day); end.setHours(23,59,59,999);
+
+      const center = new Date(day); center.setHours(12,0,0,0);
+      const t0 = new Date(center.getTime() - spanDays*24*3600*1000);
+      const t1 = new Date(center.getTime() + spanDays*24*3600*1000);
+
+      let minD = Infinity, minT = null;
+      let maxD = -Infinity, maxT = null;
+
+      for (let tt = new Date(t0); tt <= t1; tt = new Date(tt.getTime() + stepHours*3600*1000)){
+        const dkm = moonDistanceKmAt(tt);
+        if (dkm < minD){ minD = dkm; minT = new Date(tt); }
+        if (dkm > maxD){ maxD = dkm; maxT = new Date(tt); }
+      }
+
+      if (minT && minT >= start && minT <= end) return { tag: "perigeu", time: minT, distKm: minD };
+      if (maxT && maxT >= start && maxT <= end) return { tag: "apogeu",  time: maxT, distKm: maxD };
+      return null;
+    }
+
+    // Superlluna (criteri robust):
+    // - plena
+    // - perigeu dins ±24h
+    // - distància a la plena <= 360.000 km
+    function isSupermoon(fullMoonDate){
+      const fullKm = moonDistanceKmAt(fullMoonDate);
+
+      const center = new Date(fullMoonDate);
+      const t0 = new Date(center.getTime() - 7*24*3600*1000);
+      const t1 = new Date(center.getTime() + 7*24*3600*1000);
+
+      let minD = Infinity, minT = null;
+      for (let tt = new Date(t0); tt <= t1; tt = new Date(tt.getTime() + 2*3600*1000)){
+        const dkm = moonDistanceKmAt(tt);
+        if (dkm < minD){ minD = dkm; minT = new Date(tt); }
+      }
+      if (!minT) return false;
+
+      const dtHours = Math.abs(fullMoonDate.getTime() - minT.getTime()) / (1000*3600);
+      return (dtHours <= 24) && (fullKm <= 360000);
     }
 
     function renderMoonSVG(opts){
@@ -269,7 +305,6 @@ a:active{ opacity:1; }
       const cx = 120, cy = 120;
       const R = R_now;
 
-      // Terminador real (el·lipse)
       const cosPhi = (2 * clamp(illum, 0, 1)) - 1;
       let rx = Math.abs(cosPhi) * R;
       if (rx < 0.001) rx = 0.001;
@@ -278,8 +313,8 @@ a:active{ opacity:1; }
       const sweepLimb = waxing ? 1 : 0;
 
       let sweepTerm;
-      if (!isGibbous) sweepTerm = waxing ? 0 : 1;  // crescent
-      else            sweepTerm = waxing ? 1 : 0;  // gibbous
+      if (!isGibbous) sweepTerm = waxing ? 0 : 1;
+      else            sweepTerm = waxing ? 1 : 0;
 
       const almostNew  = illum < 0.01;
       const almostFull = illum > 0.99;
@@ -291,6 +326,7 @@ a:active{ opacity:1; }
         Z
       `;
 
+      // Imatge base (la teva)
       const IMG = "assets/moon/plena.png";
 
       return `
@@ -355,7 +391,6 @@ a:active{ opacity:1; }
 
         const v = Astronomy.GeoVector(Astronomy.Body.Moon, t, true);
         const rAU = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
-
         const AU_KM = (typeof Astronomy.AU_KM === "number") ? Astronomy.AU_KM : 149597870.7;
         const distKm = rAU * AU_KM;
 
@@ -372,15 +407,26 @@ a:active{ opacity:1; }
         const u = clamp((angArcmin - APog) / (PErig - APog), 0, 1);
         const R_now = R_apogeu + u * (R_perigeu - R_apogeu);
 
-        // === TÍTOL = NOM DE LA FASE ===
+        // TÍTOL (fase) + Superlluna si toca
+        const exactEv = phaseExactEventForDay(day);
         const label = phaseLabelForDay(phaseDeg, illum, day);
-        document.getElementById("title").textContent = titleCaseCatalan(label);
 
-        // === KPI ===
+        let title = titleCaseCatalan(label);
+        if (exactEv && exactEv.name === "Lluna plena" && isSupermoon(exactEv.date)){
+          title += " · Superlluna";
+        }
+        document.getElementById("title").textContent = title;
+
+        // KPI
         document.getElementById("kIll").textContent      = fmtPct(illum*100, 2);
         document.getElementById("kPhaseDeg").textContent = `${phaseDeg.toFixed(1)}°`;
         document.getElementById("kSize").textContent     = `${angArcmin.toFixed(1)}′`;
-        document.getElementById("kDist").textContent     = `${Math.round(distKm).toLocaleString("ca-ES")} km`;
+
+        // Distància + (perigeu/apogeu) si cau dins el dia
+        const apsis = apsisTagForDay(day);
+        const apsisTxt = apsis ? ` (${apsis.tag})` : "";
+        document.getElementById("kDist").textContent =
+          `${Math.round(distKm).toLocaleString("ca-ES")} km${apsisTxt}`;
 
         // Edat
         const age = moonAgeDays(day);
@@ -396,7 +442,7 @@ a:active{ opacity:1; }
         errEl.style.display = "block";
         errEl.textContent = "Error: " + (e?.message || e);
       }
-       })();
+    })();
 
     // Hereta el mode nocturn de l'app (localStorage) i escolta canvis
     try{
