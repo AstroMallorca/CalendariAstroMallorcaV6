@@ -529,29 +529,33 @@ a:active{ opacity:1; }
 </svg>`;
     }
 function toJulianUtc(x){
-  // Retorna un número (JD UTC) segur per passar a SearchRiseSet/SearchTransit
   if (x == null) throw new Error("toJulianUtc: valor buit");
 
-  // ja és número
+  // Ja és número (JD)
   if (typeof x === "number" && Number.isFinite(x)) return x;
 
-  // Date -> AstroTime -> JD
-  if (x instanceof Date) return Astronomy.MakeTime(x).ut;
+  // Date -> JD UTC (robust, sense MakeTime)
+  if (x instanceof Date){
+    return (x.getTime() / 86400000) + 2440587.5;
+  }
 
   // AstroTime típic
   if (typeof x.ut === "number" && Number.isFinite(x.ut)) return x.ut;
 
-  // AstroTime amb ToDate
+  // AstroTime amb ToDate()
   if (typeof x.ToDate === "function"){
     const d = x.ToDate();
-    if (d instanceof Date && Number.isFinite(d.getTime())) return Astronomy.MakeTime(d).ut;
+    if (d instanceof Date && Number.isFinite(d.getTime())){
+      return (d.getTime() / 86400000) + 2440587.5;
+    }
   }
 
-  // {date: ...}
+  // { date: ... }
   if (x.date) return toJulianUtc(x.date);
 
   throw new Error("toJulianUtc: tipus invàlid: " + String(x));
 }
+
 
     (function main(){
       const errEl = document.getElementById("err");
