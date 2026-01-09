@@ -429,6 +429,92 @@ function safeMakeTime(x){
 
       return hor.altitude;
     }
+// Troba el moment exacte (aprox) en què l'altura creua targetAlt (normalment 0°)
+// dins l'interval [tA, tB] fent bisecció.
+function refineCrossingTime(body, observer, tA, tB, targetAlt = 0, iters = 25){
+  let a = new Date(tA), b = new Date(tB);
+
+  let fa = bodyAltitudeDeg(body, observer, a) - targetAlt;
+  let fb = bodyAltitudeDeg(body, observer, b) - targetAlt;
+
+  if (!Number.isFinite(fa) || !Number.isFinite(fb)) return null;
+  if (fa === 0) return a;
+  if (fb === 0) return b;
+
+  // han de tenir signe oposat per garantir creuament
+  if (fa * fb > 0) return null;
+
+  for (let i = 0; i < iters; i++){
+    const mid = new Date((a.getTime() + b.getTime()) / 2);
+    const fm = bodyAltitudeDeg(body, observer, mid) - targetAlt;
+    if (!Number.isFinite(fm)) return null;
+
+    if (fa * fm <= 0){
+      b = mid; fb = fm;
+    }else{
+      a = mid; fa = fm;
+    }
+  }
+  return new Date((a.getTime() + b.getTime()) / 2);
+}
+
+// Escaneja altures i detecta rise/set (creuaments de 0°).
+function findRiseSetScan(body, observer, startDate, hours = 36, stepMinutes = 5){
+  const start = new Date(startDate);
+  const end = new Date(start.getTime() + hours*3600*1000);
+  const stepMs = stepMinutes*60*1000;
+
+  let prevT = new Date(start);
+  let prevAlt = bodyAltitudeDeg(body, observer, prevT);
+
+  if (!Number.isFinite(prevAlt)) return { rise: null, set: null };
+
+  let rise = null;
+  let set  = null;
+
+  for (let ms = start.getTime() + stepMs; ms <= end.getTime(); ms += stepMs){
+    const t = new Date(ms);
+    const alt = bodyAltitudeDeg(body, observer, t);
+    if (!Number.isFinite(alt)) continue;
+
+    // Rise: de <0 a >=0
+    if (!rise && prevAlt < 0 && alt >= 0){
+      rise = refineCrossingTime(body, observer, prevT, t, 0);
+    }
+
+    // Set: de >=0 a <0
+    if (!set && prevAlt >= 0 && alt < 0){
+      set = refineCrossingTime(body, observer, prevT, t, 0);
+    }
+
+    if (rise && set) break;
+
+    prevT = t;
+    prevAlt = alt;
+  }
+
+  return { rise, set };
+}
+
+// Transit: moment d'altura màxima per mostreig (aprox)
+function findTransitByScan(body, observer, startDate, endDate, stepMinutes = 5){
+  const t0 = startDate.getTime();
+  const t1 = endDate.getTime();
+  const stepMs = stepMinutes*60*1000;
+
+  let bestAlt = -1e9;
+  let bestT = null;
+
+  for (let ms = t0; ms <= t1; ms += stepMs){
+    const d = new Date(ms);
+    const alt = bodyAltitudeDeg(body, observer, d);
+    if (Number.isFinite(alt) && alt > bestAlt){
+      bestAlt = alt;
+      bestT = d;
+    }
+  }
+  return bestT ? { time: bestT, altDeg: bestAlt } : null;
+}
 
     function maxAltitudeBetween(body, observer, tStartDate, tEndDate, stepMinutes = 5){
       if (!tStartDate || !tEndDate) return null;
@@ -663,7 +749,6 @@ function evToDate(ev){
 const chartWrap = document.getElementById("chartWrap");
 const statsEl   = document.getElementById("stats");
 
-// per defecte, amagat
 chartWrap.style.display = "none";
 statsEl.style.display = "none";
 
@@ -674,49 +759,37 @@ if (!Number.isFinite(day0.getTime())){
   throw new Error("Dia invàlid (dateStr). Revisa ?date=YYYY-MM-DD");
 }
 
-// IMPORTANT: startSearch com a Date "de veritat"
 const startSearch = new Date(day0.getTime() - 12*3600*1000);
 
-// Converteix a AstroTime (robust)
-const tStart = toAstroTime(startSearch);
+// ✅ MOON rise/set per escaneig (NO SearchRiseSet)
+const rs = findRiseSetScan(Astronomy.Body.Moon, observer, startSearch, 36, 5);
+let rise = rs.rise;
+let set  = rs.set;
 
-// Rise/Set (sempre passant AstroTime)
-const riseEv = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, +1, tStart, 3);
-let   setEv  = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, tStart, 3);
-
-const rise = evToDate(riseEv);
-let   set  = evToDate(setEv);
-
-// si set surt abans de rise, cerca la següent posta
-if (rise && set && set.getTime() <= rise.getTime()){
-  const afterRise = new Date(rise.getTime() + 5*60*1000);
-  const tAfter = toAstroTime(afterRise);
-  const set2Ev = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, tAfter, 3);
-  const set2 = evToDate(set2Ev);
-  if (set2) set = set2;
+// Si la lluna ja és damunt i només trobam set, o només rise, pot passar.
+// Per fer-ho simple: si tenim rise però no set, escanejam més hores després de rise.
+if (rise && !set){
+  const rs2 = findRiseSetScan(Astronomy.Body.Moon, observer, new Date(rise.getTime()+5*60*1000), 36, 5);
+  set = rs2.set;
 }
 
-// Transit (si existeix)
+// Transit (màxim) entre rise i set
 let transit = null;
-if (typeof Astronomy.SearchTransit === "function"){
-  const trEv = Astronomy.SearchTransit(Astronomy.Body.Moon, observer, tStart, 3);
-  transit = evToDate(trEv);
+let altMax = null;
+
+if (rise && set){
+  const tr = findTransitByScan(Astronomy.Body.Moon, observer, rise, set, 5);
+  if (tr){
+    transit = tr.time;
+    altMax = tr.altDeg;
+  }
 }
 
-// Fallback: punt mig rise-set
-if (!transit && rise && set){
-  transit = new Date((rise.getTime() + set.getTime()) / 2);
-}
+// DEBUG (ara sí que sortirà)
+console.log("DEBUG moon graph", { startSearch, rise, set, transit, altMax });
 
-// ✅ ARA SÍ: posa el console.log AQUÍ (ja no hauria de petar)
-console.log("DEBUG moon graph:");
-console.log("startSearch(Date) =", startSearch, "isDate?", startSearch instanceof Date);
-console.log("rise =", rise, "set =", set, "transit =", transit);
-
-// Si tenim dades mínimes, mostram
+// Mostram només si tenim rise+set+transit
 if (rise && set && transit){
-  const altMax = bodyAltitudeDeg(Astronomy.Body.Moon, observer, transit);
-
   chartWrap.style.display = "";
   document.getElementById("chartTitle").textContent =
     `Altura max: ${Number.isFinite(altMax) ? Math.round(altMax) + "°" : "—"}`;
@@ -727,19 +800,21 @@ if (rise && set && transit){
   const aboveMs = Math.max(0, set.getTime() - rise.getTime());
   document.getElementById("sAbove").textContent = fmtDurationHM(aboveMs);
 
-  // Nit: sunset(dia) -> sunrise(dia+1)
+  // === Nit: sunset(dia) -> sunrise(dia+1) (també per escaneig) ===
   const day1 = new Date(day0.getTime() + 24*3600*1000);
+
+  // Sunset: escanejam des de les 12:00 del dia0 durant 24h i agafam el primer "set" del Sol
   const noon0 = new Date(day0); noon0.setHours(12,0,0,0);
-  const noon1 = new Date(day1); noon1.setHours(12,0,0,0);
+  const sunRS = findRiseSetScan(Astronomy.Body.Sun, observer, noon0, 24, 2);
+  const sunset = sunRS.set;
 
-  const tNoon0 = toAstroTime(noon0);
-  const tNoon1 = toAstroTime(noon1);
-
-  const sunsetEv  = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, tNoon0, 2);
-  const sunriseEv = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, tNoon1, 2);
-
-  const sunset  = evToDate(sunsetEv);
-  const sunrise = evToDate(sunriseEv);
+  // Sunrise: si tenim sunset, escanejam després del sunset fins trobar rise
+  let sunrise = null;
+  if (sunset){
+    const afterSunset = new Date(sunset.getTime() + 5*60*1000);
+    const sunRS2 = findRiseSetScan(Astronomy.Body.Sun, observer, afterSunset, 24, 2);
+    sunrise = sunRS2.rise;
+  }
 
   if (sunset && sunrise){
     const nightMs = Math.max(0, sunrise.getTime() - sunset.getTime());
@@ -756,6 +831,7 @@ if (rise && set && transit){
   document.getElementById("sIncl").textContent = "—";
   statsEl.style.display = "";
 }
+
 
       }catch(e){
         console.error(e);
