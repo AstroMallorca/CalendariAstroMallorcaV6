@@ -619,74 +619,91 @@ a:active{ opacity:1; }
         // SVG Lluna
         box.innerHTML = renderMoonSVG({ R_perigeu, R_apogeu, R_now, illum, waxing });
 
-        // ======= Gràfica + resum inferior =======
-        const chartWrap = document.getElementById("chartWrap");
-        const statsEl   = document.getElementById("stats");
+// ======= Gràfica + resum inferior =======
+const chartWrap = document.getElementById("chartWrap");
+const statsEl   = document.getElementById("stats");
 
-        try{
-          const day0 = new Date(day); day0.setHours(0,0,0,0);
+// per defecte, amagat
+chartWrap.style.display = "none";
+statsEl.style.display = "none";
 
-          // Cercam rise/set a partir de (dia - 12h) per agafar el cicle correctament
-          const startSearch = new Date(day0.getTime() - 12*3600*1000);
-          const riseEv = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, +1, Astronomy.MakeTime(startSearch), 3);
-          let setEv    = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, Astronomy.MakeTime(startSearch), 3);
+const day0 = new Date(day); day0.setHours(0,0,0,0);
 
-          const rise = riseEv ? riseEv.date : null;
-          let set    = setEv  ? setEv.date  : null;
+// Cercam rise/set a partir de (dia - 12h) per agafar el cicle correctament
+const startSearch = new Date(day0.getTime() - 12*3600*1000);
 
-          if (rise && set && set.getTime() <= rise.getTime()){
-            const afterRise = new Date(rise.getTime() + 5*60*1000);
-            const set2 = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, Astronomy.MakeTime(afterRise), 3);
-            set = set2 ? set2.date : set;
-          }
+const riseEv = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, +1, Astronomy.MakeTime(startSearch), 3);
+let setEv    = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, Astronomy.MakeTime(startSearch), 3);
 
-          const max = (rise && set) ? maxAltitudeBetween(Astronomy.Body.Moon, observer, rise, set, 5) : null;
+const rise = riseEv ? riseEv.date : null;
+let set    = setEv  ? setEv.date  : null;
 
-          if (rise && set && max && Number.isFinite(max.altDeg)){
-            chartWrap.style.display = "";
-            document.getElementById("chartTitle").textContent = `Altura max: ${Math.round(max.altDeg)}°`;
-            document.getElementById("chartBox").innerHTML = renderArcChart({
-              rise,
-              transit: max.time,
-              set
-            });
+// Si set surt abans de rise, cercam la següent posta després de rise
+if (rise && set && set.getTime() <= rise.getTime()){
+  const afterRise = new Date(rise.getTime() + 5*60*1000);
+  const set2 = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, Astronomy.MakeTime(afterRise), 3);
+  set = set2 ? set2.date : set;
+}
 
-            const aboveMs = Math.max(0, set.getTime() - rise.getTime());
-            document.getElementById("sAbove").textContent = fmtDurationHM(aboveMs);
+// Transit: millor amb SearchTransit si existeix
+let transit = null;
+if (typeof Astronomy.SearchTransit === "function"){
+  const trEv = Astronomy.SearchTransit(Astronomy.Body.Moon, observer, Astronomy.MakeTime(startSearch), 3);
+  transit = trEv ? trEv.date : null;
+}
 
-            // Nit: sunset(dia) -> sunrise(dia+1)
-            const day1 = new Date(day0.getTime() + 24*3600*1000);
-            const noon0 = new Date(day0); noon0.setHours(12,0,0,0);
-            const noon1 = new Date(day1); noon1.setHours(12,0,0,0);
+// Si no hi ha SearchTransit (o falla), fem un “fallback” simple: punt mig rise-set
+if (!transit && rise && set){
+  transit = new Date((rise.getTime() + set.getTime()) / 2);
+}
 
-            const sunsetEv  = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, Astronomy.MakeTime(noon0), 2);
-            const sunriseEv = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, Astronomy.MakeTime(noon1), 2);
+// Altura màxima (aprox) a l’instant del transit
+const altMax = (transit) ? bodyAltitudeDeg(Astronomy.Body.Moon, observer, transit) : null;
 
-            const sunset  = sunsetEv  ? sunsetEv.date  : null;
-            const sunrise = sunriseEv ? sunriseEv.date : null;
+// MOSTRAM si com a mínim tenim rise+set+transit
+if (rise && set && transit){
+  chartWrap.style.display = "";
+  document.getElementById("chartTitle").textContent =
+    `Altura max: ${Number.isFinite(altMax) ? Math.round(altMax) + "°" : "—"}`;
 
-            if (sunset && sunrise){
-              const nightMs = Math.max(0, sunrise.getTime() - sunset.getTime());
-              const withMoonMs = overlapMs(sunset, sunrise, rise, set);
-              const noMoonMs = Math.max(0, nightMs - withMoonMs);
+  document.getElementById("chartBox").innerHTML = renderArcChart({
+    rise,
+    transit,
+    set
+  });
 
-              document.getElementById("sNightMoon").textContent = fmtDurationHM(withMoonMs);
-              document.getElementById("sNightNoMoon").textContent = fmtDurationHM(noMoonMs);
-            }else{
-              document.getElementById("sNightMoon").textContent = "—";
-              document.getElementById("sNightNoMoon").textContent = "—";
-            }
+  // Temps total damunt horitzó
+  const aboveMs = Math.max(0, set.getTime() - rise.getTime());
+  document.getElementById("sAbove").textContent = fmtDurationHM(aboveMs);
 
-            document.getElementById("sIncl").textContent = "—";
-            statsEl.style.display = "";
-          }else{
-            chartWrap.style.display = "none";
-            statsEl.style.display = "none";
-          }
-        }catch(_e){
-          chartWrap.style.display = "none";
-          statsEl.style.display = "none";
-        }
+  // Nit: sunset(dia) -> sunrise(dia+1)
+  const day1 = new Date(day0.getTime() + 24*3600*1000);
+  const noon0 = new Date(day0); noon0.setHours(12,0,0,0);
+  const noon1 = new Date(day1); noon1.setHours(12,0,0,0);
+
+  const sunsetEv  = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, Astronomy.MakeTime(noon0), 2);
+  const sunriseEv = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, Astronomy.MakeTime(noon1), 2);
+
+  const sunset  = sunsetEv  ? sunsetEv.date  : null;
+  const sunrise = sunriseEv ? sunriseEv.date : null;
+
+  if (sunset && sunrise){
+    const nightMs = Math.max(0, sunrise.getTime() - sunset.getTime());
+    const withMoonMs = overlapMs(sunset, sunrise, rise, set);
+    const noMoonMs = Math.max(0, nightMs - withMoonMs);
+
+    document.getElementById("sNightMoon").textContent = fmtDurationHM(withMoonMs);
+    document.getElementById("sNightNoMoon").textContent = fmtDurationHM(noMoonMs);
+  }else{
+    document.getElementById("sNightMoon").textContent = "—";
+    document.getElementById("sNightNoMoon").textContent = "—";
+  }
+
+  // “Inclinació orbital” (encara pendent)
+  document.getElementById("sIncl").textContent = "—";
+
+  statsEl.style.display = "";
+}
 
       }catch(e){
         console.error(e);
