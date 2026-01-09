@@ -271,6 +271,12 @@ a:active{ opacity:1; }
 
     function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
     function deg2rad(d){ return d * Math.PI / 180; }
+    // Altituds “estàndard” per rise/set (aprox.)
+// Sol: -0.833° (refacció + radi solar)
+// Lluna: -0.3° (refacció + radi lunar aprox.)
+const SUN_EVENT_ALT  = -0.833;
+const MOON_EVENT_ALT = -0.3;
+
 
     function fmtPct(x, decimals = 2){
       if (!Number.isFinite(x)) return "—";
@@ -465,14 +471,13 @@ function refineCrossingTime(body, observer, tA, tB, targetAlt = 0, iters = 25){
 }
 
 // Escaneja altures i detecta rise/set (creuaments de 0°).
-function findRiseSetScan(body, observer, startDate, hours = 36, stepMinutes = 5){
+function findRiseSetScan(body, observer, startDate, hours = 36, stepMinutes = 5, targetAlt = 0){
   const start = new Date(startDate);
   const end = new Date(start.getTime() + hours*3600*1000);
   const stepMs = stepMinutes*60*1000;
 
   let prevT = new Date(start);
   let prevAlt = bodyAltitudeDeg(body, observer, prevT);
-
   if (!Number.isFinite(prevAlt)) return { rise: null, set: null };
 
   let rise = null;
@@ -483,14 +488,17 @@ function findRiseSetScan(body, observer, startDate, hours = 36, stepMinutes = 5)
     const alt = bodyAltitudeDeg(body, observer, t);
     if (!Number.isFinite(alt)) continue;
 
+    const prevVal = prevAlt - targetAlt;
+    const curVal  = alt     - targetAlt;
+
     // Rise: de <0 a >=0
-    if (!rise && prevAlt < 0 && alt >= 0){
-      rise = refineCrossingTime(body, observer, prevT, t, 0);
+    if (!rise && prevVal < 0 && curVal >= 0){
+      rise = refineCrossingTime(body, observer, prevT, t, targetAlt);
     }
 
     // Set: de >=0 a <0
-    if (!set && prevAlt >= 0 && alt < 0){
-      set = refineCrossingTime(body, observer, prevT, t, 0);
+    if (!set && prevVal >= 0 && curVal < 0){
+      set = refineCrossingTime(body, observer, prevT, t, targetAlt);
     }
 
     if (rise && set) break;
@@ -501,9 +509,10 @@ function findRiseSetScan(body, observer, startDate, hours = 36, stepMinutes = 5)
 
   return { rise, set };
 }
+
 // Calcula (ms) el temps que el cos està per damunt de l'horitzó (alt>0)
 // dins l'interval [start, end], integrant per passos i refinant creuaments.
-function aboveHorizonTimeMs(body, observer, start, end, stepMinutes = 2){
+function aboveHorizonTimeMs(body, observer, start, end, stepMinutes = 2, targetAlt = 0){
   if (!(start instanceof Date) || !(end instanceof Date)) return 0;
   if (!(end.getTime() > start.getTime())) return 0;
 
@@ -520,25 +529,17 @@ function aboveHorizonTimeMs(body, observer, start, end, stepMinutes = 2){
     const altCur = bodyAltitudeDeg(body, observer, tCur);
     if (!Number.isFinite(altCur)) continue;
 
-    const prevAbove = altPrev > 0;
-    const curAbove  = altCur  > 0;
+    const prevAbove = altPrev > targetAlt;
+    const curAbove  = altCur  > targetAlt;
 
     if (prevAbove && curAbove){
-      // tot el segment és "damunt"
       total += (tCur.getTime() - tPrev.getTime());
     } else if (prevAbove !== curAbove){
-      // hi ha creuament dins el segment -> refinam el moment de 0°
-      const cross = refineCrossingTime(body, observer, tPrev, tCur, 0);
+      const cross = refineCrossingTime(body, observer, tPrev, tCur, targetAlt);
       if (cross){
-        if (prevAbove && !curAbove){
-          // baixada: sumam de tPrev fins cross
-          total += (cross.getTime() - tPrev.getTime());
-        } else if (!prevAbove && curAbove){
-          // pujada: sumam de cross fins tCur
-          total += (tCur.getTime() - cross.getTime());
-        }
+        if (prevAbove && !curAbove) total += (cross.getTime() - tPrev.getTime());
+        else if (!prevAbove && curAbove) total += (tCur.getTime() - cross.getTime());
       } else {
-        // si no podem refinar, aproximam amb mitja passa (millor que res)
         total += (tCur.getTime() - tPrev.getTime()) / 2;
       }
     }
@@ -549,6 +550,7 @@ function aboveHorizonTimeMs(body, observer, start, end, stepMinutes = 2){
 
   return Math.max(0, total);
 }
+
 
 // Transit: moment d'altura màxima per mostreig (aprox)
 function findTransitByScan(body, observer, startDate, endDate, stepMinutes = 5){
@@ -815,10 +817,30 @@ if (!Number.isFinite(day0.getTime())){
 
 const startSearch = new Date(day0.getTime() - 12*3600*1000);
 
-// ✅ MOON rise/set per escaneig (NO SearchRiseSet)
-const rs = findRiseSetScan(Astronomy.Body.Moon, observer, startSearch, 48, 5);
-let rise = rs.rise;
-let set  = rs.set;
+// Volem: rise dins el dia local (0–24h) i set després (encara que sigui l’endemà)
+const moonScanStart = new Date(day0); // 00:00 del dia
+const rs0 = findRiseSetScan(Astronomy.Body.Moon, observer, moonScanStart, 36, 5, MOON_EVENT_ALT);
+
+let rise = rs0.rise;
+let set  = null;
+
+if (rise){
+  // cerca la primera posta després del rise
+  const rs1 = findRiseSetScan(
+    Astronomy.Body.Moon,
+    observer,
+    new Date(rise.getTime() + 5*60*1000),
+    36,
+    5,
+    MOON_EVENT_ALT
+  );
+  set = rs1.set;
+} else {
+  // Si no hi ha rise en 36h, pot ser que la lluna ja sigui damunt a les 00:00:
+  // llavors cercam la primera posta dins les properes 36h.
+  set = rs0.set;
+}
+
 
 // 1) Si tenim rise però no set: cerca la primera posta després de rise
 if (rise && !set){
@@ -866,14 +888,14 @@ if (rise && set && transit){
 
   // Sunset: escanejam des de les 12:00 del dia0 durant 24h i agafam el primer "set" del Sol
   const noon0 = new Date(day0); noon0.setHours(12,0,0,0);
-  const sunRS = findRiseSetScan(Astronomy.Body.Sun, observer, noon0, 24, 2);
+  const sunRS = findRiseSetScan(Astronomy.Body.Sun, observer, noon0, 24, 2, SUN_EVENT_ALT);
   const sunset = sunRS.set;
 
   // Sunrise: si tenim sunset, escanejam després del sunset fins trobar rise
   let sunrise = null;
   if (sunset){
     const afterSunset = new Date(sunset.getTime() + 5*60*1000);
-    const sunRS2 = findRiseSetScan(Astronomy.Body.Sun, observer, afterSunset, 24, 2);
+  const sunRS2 = findRiseSetScan(Astronomy.Body.Sun, observer, afterSunset, 24, 2, SUN_EVENT_ALT);    
     sunrise = sunRS2.rise;
   }
 
@@ -881,7 +903,7 @@ if (sunset && sunrise){
   const nightMs = Math.max(0, sunrise.getTime() - sunset.getTime());
 
   // ✅ Temps amb lluna DURANT la nit: integració per escaneig (robusta)
-  const withMoonMs = aboveHorizonTimeMs(Astronomy.Body.Moon, observer, sunset, sunrise, 2);
+const withMoonMs = aboveHorizonTimeMs(Astronomy.Body.Moon, observer, sunset, sunrise, 2, MOON_EVENT_ALT);
 
   // Nit sense lluna = nit total - amb lluna
   const noMoonMs = Math.max(0, nightMs - withMoonMs);
