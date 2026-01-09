@@ -769,16 +769,23 @@ if (!Number.isFinite(day0.getTime())){
 const startSearch = new Date(day0.getTime() - 12*3600*1000);
 
 // ✅ MOON rise/set per escaneig (NO SearchRiseSet)
-const rs = findRiseSetScan(Astronomy.Body.Moon, observer, startSearch, 36, 5);
+const rs = findRiseSetScan(Astronomy.Body.Moon, observer, startSearch, 48, 5);
 let rise = rs.rise;
 let set  = rs.set;
 
-// Si la lluna ja és damunt i només trobam set, o només rise, pot passar.
-// Per fer-ho simple: si tenim rise però no set, escanejam més hores després de rise.
+// 1) Si tenim rise però no set: cerca la primera posta després de rise
 if (rise && !set){
-  const rs2 = findRiseSetScan(Astronomy.Body.Moon, observer, new Date(rise.getTime()+5*60*1000), 36, 5);
+  const rs2 = findRiseSetScan(Astronomy.Body.Moon, observer, new Date(rise.getTime()+5*60*1000), 48, 5);
   set = rs2.set;
 }
+
+// 2) Si tenim set abans de rise (com el teu cas): la posta NO és la correcta.
+//    Cerca una posta després de rise.
+if (rise && set && set.getTime() <= rise.getTime()){
+  const rs3 = findRiseSetScan(Astronomy.Body.Moon, observer, new Date(rise.getTime()+5*60*1000), 48, 5);
+  if (rs3.set) set = rs3.set;
+}
+
 
 // Transit (màxim) entre rise i set
 let transit = null;
