@@ -225,11 +225,14 @@ a:active{ opacity:1; }
     </div>
 
     <!-- ===== Resum inferior ===== -->
-    <div class="stats" id="stats" style="display:none;">
-      <div class="k">Temps total damunt l’horitzó:</div><div class="v" id="sAbove">—</div>
-      <div class="k">Temps total de nit amb lluna:</div><div class="v" id="sNightMoon">—</div>
-      <div class="k">Temps total de nit sense lluna:</div><div class="v" id="sNightNoMoon">—</div>
-    </div>
+   <div class="stats" id="stats" style="display:none;">
+  <div class="k">Sessió de nit (Sol baix l’horitzó):</div><div class="v" id="sSession">—</div>
+
+  <div class="k">Temps total damunt l’horitzó:</div><div class="v" id="sAbove">—</div>
+  <div class="k">Temps de sessió amb lluna:</div><div class="v" id="sNightMoon">—</div>
+  <div class="k">Temps de sessió sense lluna:</div><div class="v" id="sNightNoMoon">—</div>
+</div>
+
 
     <div class="err" id="err"></div>
   </div>
@@ -283,13 +286,14 @@ const MOON_EVENT_ALT = -0.3;
       return `${x.toFixed(decimals)}%`;
     }
 
-    function fmtTimeHM(d){
-      return new Intl.DateTimeFormat("ca-ES", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }).format(d);
-    }
+    function fmtDowDM(d){
+  return new Intl.DateTimeFormat("ca-ES", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit"
+  }).format(d).replace(".", ""); // "dg 08/02"
+}
+
 
     function fmtDurationHM(ms){
       if (!Number.isFinite(ms) || ms < 0) return "—";
@@ -904,12 +908,16 @@ const withMoonMs = aboveHorizonTimeMs(Astronomy.Body.Moon, observer, sunset, sun
 
   // Nit sense lluna = nit total - amb lluna
   const noMoonMs = Math.max(0, nightMs - withMoonMs);
+document.getElementById("sSession").textContent =
+  `${fmtDowDM(sunset)} ${fmtTimeHM(sunset)} → ${fmtDowDM(sunrise)} ${fmtTimeHM(sunrise)}`;
 
   document.getElementById("sNightMoon").textContent = fmtDurationHM(withMoonMs);
   document.getElementById("sNightNoMoon").textContent = fmtDurationHM(noMoonMs);
 }else{
   document.getElementById("sNightMoon").textContent = "—";
   document.getElementById("sNightNoMoon").textContent = "—";
+  document.getElementById("sSession").textContent = "—";
+
 }
 
   statsEl.style.display = "";
