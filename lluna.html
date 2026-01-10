@@ -679,6 +679,48 @@ function renderArcChart({ rise, transit, set, altMaxDeg }){
 </svg>`;
 }
 
+// === Helper robust per convertir events/time a Date ===
+function evToDateAny(x){
+  if (!x) return null;
+
+  // format { date: ... } -> recursiu
+  if (x.date) return evToDateAny(x.date);
+
+  // ja és Date
+  if (x instanceof Date) return Number.isFinite(x.getTime()) ? x : null;
+
+  // AstroTime amb ToDate()
+  if (typeof x.ToDate === "function"){
+    const d = x.ToDate();
+    return (d instanceof Date && Number.isFinite(d.getTime())) ? d : null;
+  }
+
+  // AstroTime alternatiu amb .ut (JD UTC)
+  if (typeof x.ut === "number" && Number.isFinite(x.ut)){
+    const ms = (x.ut - 2440587.5) * 86400000;
+    const d = new Date(ms);
+    return Number.isFinite(d.getTime()) ? d : null;
+  }
+
+  return null;
+}
+
+// === Rise/Set EXACTE com a l'app (SearchRiseSet des de 00:00, finestra 1 dia) ===
+function getRiseSetSameAsApp(body, observer, iso){
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return { rise:null, set:null };
+
+  const [Y,M,D] = iso.split("-").map(Number);
+  const start = new Date(Y, M-1, D, 0, 0, 0);   // 00:00 local
+  const t0 = Astronomy.MakeTime(start);
+
+  const riseEv = Astronomy.SearchRiseSet(body, observer, +1, t0, 1, 0);
+  const setEv  = Astronomy.SearchRiseSet(body, observer, -1, t0, 1, 0);
+
+  return {
+    rise: evToDateAny(riseEv),
+    set:  evToDateAny(setEv),
+  };
+}
 
 
     // ======= SVG LLUNA (fase + mida) =======
@@ -842,29 +884,11 @@ if (!Number.isFinite(day0.getTime())){
 }
 
 
-// Volem: rise dins el dia local (0–24h) i set després (encara que sigui l’endemà)
-const moonScanStart = new Date(day0); // 00:00 del dia
-const rs0 = findRiseSetScan(Astronomy.Body.Moon, observer, moonScanStart, 36, 5, MOON_EVENT_ALT);
+// === Rise/Set EXACTE com a l'app (SearchRiseSet) ===
+const rs = getRiseSetSameAsApp(Astronomy.Body.Moon, observer, dateStr);
+let rise = rs.rise;
+let set  = rs.set;
 
-let rise = rs0.rise;
-let set  = null;
-
-if (rise){
-  // cerca la primera posta després del rise
-  const rs1 = findRiseSetScan(
-    Astronomy.Body.Moon,
-    observer,
-    new Date(rise.getTime() + 5*60*1000),
-    36,
-    5,
-    MOON_EVENT_ALT
-  );
-  set = rs1.set;
-} else {
-  // Si no hi ha rise en 36h, pot ser que la lluna ja sigui damunt a les 00:00
-  // -> agafam la primera posta
-  set = rs0.set;
-}
 
 console.log("DEBUG moon graph", { rise, set });
 
@@ -894,7 +918,7 @@ if (rise && set && transit){
   document.getElementById("kSet").textContent  = fmtTimeHM(set);
 
   // temps total damunt l’horitzó (mateix càlcul que ja tenies)
-  const aboveMs = aboveHorizonTimeMs(Astronomy.Body.Moon, observer, rise, set, 2, MOON_EVENT_ALT);
+const aboveMs = Math.max(0, set.getTime() - rise.getTime());
   document.getElementById("kAbove").textContent = fmtDurationHM(aboveMs);
 }
 
