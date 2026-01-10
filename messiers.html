@@ -155,6 +155,12 @@ function fmtHHMM(d){
   if(!d) return "—";
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+  function fmtDur(min){
+  const m = Math.max(0, Math.round(min || 0));
+  const h = Math.floor(m/60);
+  const mm = m % 60;
+  return `${h}h ${pad2(mm)}'`;
+}
 function parseISODateLocal(iso){
   const [y,m,d] = (iso||"").split("-").map(Number);
   if(!y||!m||!d) return null;
@@ -276,15 +282,33 @@ async function main(){
     const minAlt = Number(minAltEl.value || 10);
     const stepMin = Math.max(1, Number(stepEl.value || 5));
 
-    // Posta de Sol (finestra de vespre)
-    let sunset = null;
-    try{
-      const t0 = Astronomy.MakeTime(dateMid);
-      const rs = Astronomy.SearchRiseSet(Astronomy.Body.Sun, obs, -1, t0, 1, 0);
-      sunset = rs ? rs.date : null;
-    }catch(e){
-      sunset = null;
-    }
+// Sortida i posta de Sol (del mateix dia)
+let sunrise = null;
+let sunset  = null;
+try{
+  const dayStart = startOfDayLocal(iso);
+  const tStart = Astronomy.MakeTime(dayStart);
+
+  const r = Astronomy.SearchRiseSet(Astronomy.Body.Sun, obs, +1, tStart, 1, 0);
+  sunrise = r ? r.date : null;
+
+  const s = Astronomy.SearchRiseSet(Astronomy.Body.Sun, obs, -1, tStart, 1, 0);
+  sunset = s ? s.date : null;
+}catch(e){
+  sunrise = null;
+  sunset  = null;
+}
+
+// Dues finestres: 00:01→sortida i posta→23:59
+const dayStart = startOfDayLocal(iso);
+const dayEnd   = endOfDayLocal(iso);
+
+const winPreA  = new Date(dayStart.getTime() + 60*1000); // 00:01
+const winPreB  = sunrise ? sunrise : winPreA;
+
+const winPostA = sunset ? sunset : dayStart;
+const winPostB = dayEnd;
+
 
     const winA = sunset ? sunset : startOfDayLocal(iso);
     const winB = endOfDayLocal(iso); // fins 23:59
@@ -308,18 +332,22 @@ const enriched = catalog.map(obj => {
   }
 
   const dayRS = approxRiseSetForDay(iso, obs, ra, dec, minAlt, stepMin);
-  const ev = visibleMinutesInWindow(obs, ra, dec, minAlt, stepMin, winA, winB);
+const evPre  = visibleMinutesInWindow(obs, ra, dec, minAlt, stepMin, winPreA,  winPreB);
+const evPost = visibleMinutesInWindow(obs, ra, dec, minAlt, stepMin, winPostA, winPostB);
 
-  return {
-    ...obj,
-    riseApprox: dayRS.rise,
-    setApprox: dayRS.set,
-    state: dayRS.state,
-    visEveningMin: ev.visMin,
-    firstEvening: ev.first,
-    lastEvening: ev.last,
-    sunset
-  };
+return {
+  ...obj,
+  riseApprox: dayRS.rise,
+  setApprox: dayRS.set,
+  state: dayRS.state,
+
+  visPreMin: evPre.visMin,
+  visPostMin: evPost.visMin,
+  visEveningMin: evPre.visMin + evPost.visMin, // TOTAL
+
+  sunrise,
+  sunset
+};
 });
 
 
@@ -352,8 +380,16 @@ const enriched = catalog.map(obj => {
 
       const tag = document.createElement("div");
       tag.className = "tag";
-      const visTxt = o.visEveningMin > 0 ? `${Math.floor(o.visEveningMin/60)}h ${o.visEveningMin%60}m visibles el vespre` : "No visible el vespre";
-      tag.textContent = `${visTxt}${o.type ? ` · ${o.type}` : ""}${Number.isFinite(o.mag) ? ` · mag ${o.mag}` : ""}`;
+      const total = o.visEveningMin || 0;
+const pre   = o.visPreMin || 0;
+const post  = o.visPostMin || 0;
+
+const visTxt = total > 0
+  ? `${fmtDur(total)} visibles el vespre (${fmtDur(pre)} abans de la sortida · ${fmtDur(post)} des de la posta)`
+  : "No visible el vespre";
+
+tag.textContent = `${visTxt}${Number.isFinite(o.mag) ? ` · mag ${o.mag}` : ""}`;
+
 
       mid.appendChild(h);
       mid.appendChild(sub);
