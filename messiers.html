@@ -372,15 +372,15 @@ const enriched = catalog.map(obj => {
       if(o.state === "nodata"){
   rs3.textContent = "Sense coordenades (catàleg incomplet)";
   rs3.classList.add("warn");
+} else if(o.state === "circumpolar"){
+  rs3.textContent = "Circumpolar (sempre per damunt del llindar)";
+} else if(o.state === "never"){
+  rs3.textContent = "No puja per damunt del llindar avui";
+  rs3.classList.add("warn");
+} else {
+  rs3.textContent = o.sunset ? `Posta de Sol: ${fmtHHMM(o.sunset)}` : "";
+}
 
-      if(o.state === "circumpolar"){
-        rs3.textContent = "Circumpolar (sempre per damunt del llindar)";
-      }else if(o.state === "never"){
-        rs3.textContent = "No puja per damunt del llindar avui";
-        rs3.classList.add("warn");
-      }else{
-        rs3.textContent = o.sunset ? `Posta de Sol: ${fmtHHMM(o.sunset)}` : "";
-      }
 
       right.appendChild(rs1);
       right.appendChild(rs2);
