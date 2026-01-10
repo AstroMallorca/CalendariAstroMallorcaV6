@@ -96,19 +96,15 @@
   display:inline-block;
   margin-top:6px;
   padding:4px 8px;
-  border-radius:10px;         /* ✅ rectangle arrodonit */
+  border-radius:10px;
   border:1px solid var(--border);
   font-size:12px;
   color: var(--muted);
   max-width: 100%;
-}
-.tag{
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-    }
     .warn{ opacity:.8; }
     .page-title{
   margin: 6px 0 4px;
@@ -138,8 +134,8 @@
     <a href="#" id="back">← Tornar</a>
   </div>
 
-  <h1 style="margin: 6px 0 6px;">Objectes Messier</h1>
-  <div class="muted" id="subtitle"></div>
+<h1 class="page-title">Objectes Messier</h1>
+<div class="muted page-date" id="meta"></div>
   <div class="list" id="list"></div>
 
 <script>
