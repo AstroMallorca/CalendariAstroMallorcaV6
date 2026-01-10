@@ -126,6 +126,24 @@
       color: var(--text);
       font-size: 14px;
     }
+    .title{ text-align:center; }
+    .meta-center{ text-align:center; }
+    .dot.ring{
+  position: relative;
+}
+.dot.ring::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width: 20px;
+  height: 10px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  transform: translate(-50%, -50%) rotate(-20deg);
+}
+th.time{ text-align:right; }
+
   </style>
 </head>
 
@@ -133,17 +151,18 @@
   <div class="wrap">
     <a href="#" id="back">← Tornar</a>
 
-    <h1>Sistema solar</h1>
-    <p class="meta">
-      Data: <span id="d"></span>
-      <span id="loc"></span>
-    </p>
+<h1 class="title">Sistema solar</h1>
+<p class="meta meta-center">
+  Data: <span id="d"></span>
+</p>
+
 
     <div class="card">
       <!-- Diagrama heliocèntric simple (posicions reals en el pla eclíptic) -->
       <canvas id="sys" width="700" height="700" aria-label="Diagrama del sistema solar"></canvas>
       <div class="hint">
-        Diagrama heliocèntric (pla eclíptic): posicions relatives del mateix dia (no és una carta del cel).
+        Diagrama heliocèntric (pla eclíptic): posicions relatives del mateix dia (no és una carta del cel i no està a escala).
+
       </div>
     </div>
 
@@ -193,11 +212,6 @@
     const elev = Number(p.get("elev"));
 
     document.getElementById("d").textContent = dateStr || "(sense data)";
-
-    // Mostra localització si hi és
-    if (Number.isFinite(lat) && Number.isFinite(lon)){
-      document.getElementById("loc").textContent = ` · ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-    }
 
     const errBox = document.getElementById("err");
     const showErr = (msg) => {
@@ -298,6 +312,7 @@ const planetsDiagram = [
         const dot = document.createElement("span");
         dot.className = "dot";
         dot.style.background = pl.color;
+        if (pl.name === "Saturn") dot.classList.add("ring");
         const label = document.createElement("span");
         label.textContent = pl.name;
         box.appendChild(dot);
@@ -420,15 +435,6 @@ ctx.restore();
 
 }
 
-
-        // Títol petit dins canvas (opcional)
-        ctx.save();
-        ctx.fillStyle = text;
-        ctx.globalAlpha = 0.85;
-        ctx.font = "700 22px system-ui, -apple-system, Segoe UI, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("Sistema solar", cx, 34);
-        ctx.restore();
 
       }catch(e){
         console.warn("Diagram error:", e);
