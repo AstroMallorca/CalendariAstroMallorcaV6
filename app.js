@@ -1210,7 +1210,9 @@ if (btnNext){
 
 }
 
-document.querySelector(".tancar").onclick = () => modal.classList.add("ocult");
+const btnTancar = document.querySelector(".tancar");
+if (btnTancar) btnTancar.onclick = () => modal.classList.add("ocult");
+
 botoNocturn.onclick = () => {
   const on = document.body.classList.toggle("nocturn");
   localStorage.setItem("nocturn", on ? "1" : "0");
