@@ -11,6 +11,14 @@
   <meta name="theme-color" content="#000000">
 </head>
 <body>
+<script>
+  // Aplica el mode guardat el més aviat possible (abans de pintar la UI)
+  try{
+    if (localStorage.getItem("nocturn") === "1") {
+      document.body.classList.add("nocturn");
+    }
+  }catch(e){}
+</script>
 
 <header class="topbar">
   <div class="topbar-left">
