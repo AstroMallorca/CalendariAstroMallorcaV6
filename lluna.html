@@ -833,8 +833,9 @@ function isWithin3DaysNearNewMoon(dayLocalNoon){
   const t0 = Astronomy.MakeTime(dayLocalNoon);
 
   // propera Lluna nova (cap endavant) i l'anterior (cap enrere)
-  const nmNextTime = Astronomy.SearchMoonPhase(0, t0, +1);
-  const nmPrevTime = Astronomy.SearchMoonPhase(0, t0, -1);
+  cconst nmNextTime = Astronomy.SearchMoonPhase(0, t0, +10);
+  const nmPrevTime = Astronomy.SearchMoonPhase(0, t0, -10);
+
 
   const nmNext = evToDateAny(nmNextTime) || (nmNextTime && nmNextTime.date ? new Date(nmNextTime.date) : null);
   const nmPrev = evToDateAny(nmPrevTime) || (nmPrevTime && nmPrevTime.date ? new Date(nmPrevTime.date) : null);
@@ -845,7 +846,7 @@ function isWithin3DaysNearNewMoon(dayLocalNoon){
 
   function diffDaysTo(d){
     const x = new Date(d); x.setHours(0,0,0,0);
-    return Math.round((x.getTime() - day0.getTime()) / 86400000);
+    return Math.floor(((x.getTime() - day0.getTime()) / 86400000) + 0.5);
   }
 
   let best = null;
