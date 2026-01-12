@@ -157,7 +157,7 @@ h1{
   const ym = params.get("ym") || "2026-01"; // YYYY-MM
 
   const BASE_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWf6OL8LYzMsBPuxvI_h4s9-0__hru3hWK9D2ewyccoku9ndl2VhZ0GS8P9uEigShJEehsy2UktnY2/pub";
-  const SHEET_FOTOS_MES = `${BASE_SHEETS}?output=csv&gid=0`;
+  const SHEET_FOTOS_MES = "data/FOTOS_MES.csv";
 
   function detectDelimiter(text){
     const firstLine = (text.split(/\r?\n/).find(l => l.trim()) || "");
