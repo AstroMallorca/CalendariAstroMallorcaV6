@@ -4,7 +4,7 @@
 const BASE_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWf6OL8LYzMsBPuxvI_h4s9-0__hru3hWK9D2ewyccoku9ndl2VhZ0GS8P9uEigShJEehsy2UktnY2/pub";
 
 
-const SHEET_FOTOS_MES = `${BASE_SHEETS}?output=csv&gid=0`;
+const SHEET_FOTOS_MES = "data/FOTOS_MES.csv";
 const SHEET_EFEMERIDES = `${BASE_SHEETS}?output=csv&gid=1305356303`;
 const SHEET_CONFIG = `${BASE_SHEETS}?output=csv&gid=1324899531`;
 // ✅ Efemèrides especials (icones) en LOCAL (CSV)
