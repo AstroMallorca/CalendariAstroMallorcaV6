@@ -1,4 +1,4 @@
-endata;tipus;titol;codi;Hora;importancia
+data;tipus;titol;codi;Hora;importancia
 01-01-2026;lluna;Lluna en perigeu;;;5
 02-01-2026;asteroide;Harmonia en oposició;;;8
 02-01-2026;lluna;La Lluna 0,5° al sud d’Elnath (ocultació);;;5
@@ -115,7 +115,7 @@ endata;tipus;titol;codi;Hora;importancia
 20-04-2026;planeta;Mercuri 0,5° al sud de Saturn;;;6
 20-04-2026;planeta;Mercuri 2° al sud de Mart;;;6
 21-04-2026;lluna;La Lluna 0,6° al sud d’Elnath (ocultació);;;5
-22-04-2026;planeta;Dia internacional de la mare Terra:::8
+22-04-2026;planeta;Dia internacional de la mare Terra;;;8
 22-04-2026;lluna;La Lluna 3° al nord de Júpiter;;;5
 22-04-2026;meteors;Màxim de les Lírides;;;9
 23-04-2026;planeta;Venus 4° al sud d’Alcióne;;;6
@@ -187,7 +187,7 @@ endata;tipus;titol;codi;Hora;importancia
 28-06-2026;asteroide;Victòria en conjunció amb el Sol;;;8
 29-06-2026;lluna;Lluna plena (dia 30 hora oficial);;;5
 29-06-2026;planeta;Mercuri estacionari en ascensió recta;;;6
-30-06-2036;planeta;Dia mundial dels asteroides;;;6
+30-06-2026;planeta;Dia mundial dels asteroides;;;6
 30-06-2026;lluna;La Lluna 0,2° al sud de Nunki (ocultació);;;5
 01-07-2026;planeta;Mercuri en afeli;;;6
 02-07-2026;planeta;Mercuri 2° al sud d’Higiea;;;6
@@ -397,6 +397,7 @@ endata;tipus;titol;codi;Hora;importancia
 28-12-2026;lluna;La Lluna 5° al sud de Mart;;;5
 29-12-2026;lluna;La Lluna 1,1° al nord d’Higiea (ocultació);;;5
 30-12-2026;lluna;Quart minvant;;;5
+
 
 
 
