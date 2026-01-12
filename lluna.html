@@ -829,24 +829,31 @@ const set  = rs.set;
           return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
         }
 
-        function isWithin3DaysBeforeNewMoon(dayLocalNoon){
-          // proper esdeveniment de fase 0 (Lluna nova) dins els pròxims 10 dies
-          const t0 = Astronomy.MakeTime(dayLocalNoon);
-          const nm = Astronomy.SearchMoonPhase(0, t0, +10);
-          const nmDate = nm ? nm.date : null;
-          if (!nmDate) return { ok:false, nmDate:null, diffDays:null };
+function isWithin3DaysBeforeNewMoon(dayLocalNoon){
+  // proper esdeveniment de Lluna nova (angle 0) cap endavant
+  const t0 = Astronomy.MakeTime(dayLocalNoon);
+  const nmTime = Astronomy.SearchMoonPhase(0, t0, +1); // ✅ direcció correcta (+1)
 
-          // diferencia en dies (Lluna nova - dia seleccionat)
-          const day0 = new Date(dayLocalNoon); day0.setHours(0,0,0,0);
-          const nm0  = new Date(nmDate);       nm0.setHours(0,0,0,0);
-          const diffDays = Math.round((nm0.getTime() - day0.getTime()) / (24*3600*1000));
+  // nmTime pot ser AstroTime o objecte amb .date
+  const nmDate = evToDateAny(nmTime) || (nmTime && nmTime.date ? new Date(nmTime.date) : null);
+  if (!nmDate) return { ok:false, nmDate:null, diffDays:null };
 
-          // “3 dies abans” = 1..3 dies abans (si vols incloure el mateix dia de Lluna nova, canvia a diffDays>=0)
-          const ok = (diffDays >= 0 && diffDays <= 3);
-          return { ok, nmDate, diffDays };
-        }
+  // diferència en dies (Lluna nova - dia seleccionat)
+  const day0 = new Date(dayLocalNoon); day0.setHours(0,0,0,0);
+  const nm0  = new Date(nmDate);       nm0.setHours(0,0,0,0);
+
+  const diffDays = Math.round((nm0.getTime() - day0.getTime()) / 86400000);
+
+  // ✅ “3 dies abans” incloent el mateix dia de Lluna nova: 0..3
+  // si vols excloure el mateix dia: canvia a (diffDays >= 1 && diffDays <= 3)
+  const ok = (diffDays >= 0 && diffDays <= 3);
+
+  return { ok, nmDate, diffDays };
+}
+
 
         const check = isWithin3DaysBeforeNewMoon(day); // "day" és el teu Date al migdia local
+        console.log("[ASTRO]", dateStr, check);
 
         if (astroCard && check.ok){
           const isoToday = (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? dateStr : isoFromLocalDate(day);
