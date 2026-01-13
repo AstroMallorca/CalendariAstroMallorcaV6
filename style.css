@@ -715,4 +715,13 @@ body.nocturn .dia.astrofoto-0{ box-shadow: inset 0 0 0 2px rgba(255,68,68,0.70);
 html.deeplink-opening #swipeArea{
   visibility: hidden;
 }
+/* Evita el "flash" del calendari quan entram per deep-link ?date=... */
+html.deeplink-opening #swipeArea{
+  visibility: hidden;
+}
+
+/* ✅ Amaga també la capçalera (és fora del swipeArea) */
+html.deeplink-opening .topbar{
+  visibility: hidden;
+}
 
