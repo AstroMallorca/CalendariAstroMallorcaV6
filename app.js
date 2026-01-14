@@ -1193,18 +1193,26 @@ const activitatHtml = teActivitat
   ? `<div class="dia-card">
        <div class="dia-card-title">Activitat</div>
        <ul class="dia-list">
-         ${act.map(a => {
-           const notes = (a.comentaris || "").trim().replace(/\n+/g, "<br>");
-           return `
-             <li>
-               <b>${a.titol || ""}</b>
-               ${a.hora ? ` — <span class="dia-time">${a.hora}</span>` : ""}
-               ${a.lloc ? ` — ${a.lloc}` : ""}
-               ${notes ? `<div class="dia-note">${notes}</div>` : ""}
-               ${a.url ? ` <div><a href="${a.url}" target="_blank" rel="noopener">Enllaç</a></div>` : ""}
-             </li>
-           `;
-         }).join("")}
+    ${act.map(a => {
+  const titol = escapeHTML(a.titol || "Activitat");
+  const hora  = (a.hora || "").trim();
+
+  const llocRaw = (a.lloc || "").trim();
+  const infoRaw = (a.comentaris || a.descripcio || "").trim(); // comentaris ve del DESCRIPTION
+
+  return `
+    <li>
+      <b>${titol}</b>
+      ${hora ? ` — <span class="dia-time">${escapeHTML(hora)}</span>` : ""}
+
+      ${llocRaw ? `<div class="dia-note"><b>Lloc:</b> ${linkifyText(llocRaw)}</div>` : ""}
+      ${infoRaw ? `<div class="dia-note"><b>Info:</b> ${linkifyText(infoRaw)}</div>` : ""}
+
+      ${(a.url || "").trim() ? `<div class="dia-note"><a href="${a.url.trim()}" target="_blank" rel="noopener">Enllaç</a></div>` : ""}
+    </li>
+  `;
+}).join("")}
+
        </ul>
      </div>`
   : "";
