@@ -1230,7 +1230,11 @@ const especialsHtml = teEspecials
            const iconHtml = icon
              ? `<img class="esp-icon" src="${icon}" alt="${label.replace(/"/g,"&quot;")}" loading="lazy">`
              : "";
-           return `<li style="display:flex;align-items:center;gap:10px">${iconHtml}<span>${label}${e.hora ? ` — ${e.hora}` : ""}</span></li>`;
+           return `<li style="display:flex;align-items:center;gap:10px">
+  <span class="esp-bullet" aria-hidden="true">•</span>
+  ${iconHtml}
+  <span>${label}${e.hora ? ` — ${e.hora}` : ""}</span>
+</li>`;
          }).join("")}
        </ul>
      </div>`
