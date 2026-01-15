@@ -1423,14 +1423,7 @@ ${nomFestiu ? `<div class="dia-festiu">🎉 ${nomFestiu}</div>` : ""}
 contingutDia.querySelectorAll(".dia-link").forEach(el => {
   el.addEventListener("click", () => {
     const href = el.getAttribute("data-href");
-    if (!href) return;
-
-    // ✅ Guardam retorn (per Android back dins pàgines Sol/Lluna/Planetes/Messiers)
-    try{
-      sessionStorage.setItem("am_return", location.href); // això inclou ?date=ISO si el tens
-    }catch(e){}
-
-    window.location.href = href;
+    if (href) window.location.href = href;
   });
 });
 
