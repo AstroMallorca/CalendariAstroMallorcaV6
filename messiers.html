@@ -335,7 +335,10 @@ async function main(){
   const dateMid = parseISODateLocal(iso);
   const obs = new Astronomy.Observer(lat, lon, Number.isFinite(elev)? elev : 0);
 
-  document.getElementById("meta").textContent = iso;
+ if(iso){
+  const [y, m, d] = iso.split("-");
+  document.getElementById("meta").textContent = `${d}-${m}-${y}`;
+}
 
   // Botó tornar
   document.getElementById("back").addEventListener("click", (e) => {
